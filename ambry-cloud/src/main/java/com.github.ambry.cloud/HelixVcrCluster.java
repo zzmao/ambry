@@ -122,7 +122,7 @@ public class HelixVcrCluster implements VirtualReplicatorCluster {
     props = new Properties();
     props.setProperty("vcr.ssl.port", "12345");
     props.setProperty(CloudConfig.VCR_CLUSTER_ZK_CONNECT_STRING, "zemao-ld1.linkedin.biz:2181");
-    props.setProperty(CloudConfig.VCR_CLUSTER_NAME, "testCluster");
+    props.setProperty(CloudConfig.VCR_CLUSTER_NAME, "vcrCluster");
     CloudConfig cloudConfig = new CloudConfig(new VerifiableProperties(props));
 
     StaticClusterAgentsFactory staticClusterAgentsFactory =
