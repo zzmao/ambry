@@ -13,17 +13,13 @@
  */
 package com.github.ambry.cloud;
 
-import com.github.ambry.clustermap.AmbryStateModel;
 import org.apache.helix.NotificationContext;
 import org.apache.helix.model.Message;
 import org.apache.helix.participant.statemachine.StateModel;
-import org.apache.helix.participant.statemachine.StateModelFactory;
 import org.apache.helix.participant.statemachine.StateModelInfo;
-import org.apache.helix.participant.statemachine.StateModelParser;
 import org.apache.helix.participant.statemachine.Transition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 
 
 /**
@@ -40,8 +36,6 @@ public class HelixVcrStateModel extends StateModel {
   private HelixVcrCluster helixVcrCluster;
 
   HelixVcrStateModel(HelixVcrCluster helixVcrCluster) {
-    StateModelParser parser = new StateModelParser();
-    _currentState = parser.getInitialState(HelixVcrStateModel.class);
     this.helixVcrCluster = helixVcrCluster;
   }
 
@@ -52,13 +46,13 @@ public class HelixVcrStateModel extends StateModel {
 
   @Transition(to = "LEADER", from = "STANDBY")
   public void onBecomeLeaderFromStandby(Message message, NotificationContext context) {
+    helixVcrCluster.addPartition(message.getPartitionName());
     logger.info("Becoming LEADER from STANDBY");
   }
 
   @Transition(to = "STANDBY", from = "LEADER")
   public void onBecomeStandbyFromLeader(Message message, NotificationContext context) {
-    System.out.println("Become Leader: " + message.getPartitionName());
-//    helixVcrCluster.addPartition(message.getPartitionName());
+    helixVcrCluster.removePartition(message.getPartitionName());
     logger.info("Becoming STANDBY from LEADER");
   }
 
@@ -69,8 +63,7 @@ public class HelixVcrStateModel extends StateModel {
 
   @Transition(to = "OFFLINE", from = "LEADER")
   public void onBecomeOfflineFromLeader(Message message, NotificationContext context) {
-    System.out.println("OFFLINE Become Leader: " + message.getPartitionName());
-//    participant.removePartition(message.getPartitionName());
+    helixVcrCluster.removePartition(message.getPartitionName());
     logger.info("Becoming OFFLINE from LEADER");
   }
 

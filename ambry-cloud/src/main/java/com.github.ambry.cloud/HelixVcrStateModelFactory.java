@@ -30,7 +30,7 @@ public class HelixVcrStateModelFactory extends StateModelFactory<StateModel> {
   }
 
   /**
-   * Create and return an instance of {@link AmbryStateModel}
+   * Create and return an instance of {@link HelixVcrStateModel}
    * @param resourceName the resource name for which this state model is being created.
    * @param partitionName the partition name for which this state model is being created.
    *
@@ -38,9 +38,6 @@ public class HelixVcrStateModelFactory extends StateModelFactory<StateModel> {
    */
   @Override
   public StateModel createNewStateModel(String resourceName, String partitionName) {
-    System.out.println("state model created");
-    System.out.println(resourceName);
-    System.out.println(partitionName);
     return new HelixVcrStateModel(helixVcrCluster);
   }
 }
