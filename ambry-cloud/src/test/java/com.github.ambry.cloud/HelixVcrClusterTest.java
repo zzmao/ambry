@@ -59,6 +59,7 @@ public class HelixVcrClusterTest {
   private String DC_NAME = "DC1";
   private byte DC_ID = (byte) 1;
   private TestUtils.ZkInfo zkInfo;
+  private String VCR_CLUSTER_NAME = "vcrTestCluster";
 
   @Before
   public void setup() throws Exception {
@@ -72,19 +73,19 @@ public class HelixVcrClusterTest {
         SharedZkClientFactory.getInstance().buildZkClient(new HelixZkClient.ZkConnectionConfig(zkConnectString));
     zkClient.setZkSerializer(new ZNRecordSerializer());
     ClusterSetup clusterSetup = new ClusterSetup(zkClient);
-    String clusterName = "vcrCluster";
-    clusterSetup.addCluster(clusterName, true);
-    String instanceInfoArray[] = new String[6];
-    for (int i = 0; i < instanceInfoArray.length; i++) {
-      instanceInfoArray[i] = "localhost_" + (8900 + i);
-    }
-    clusterSetup.addInstancesToCluster(clusterName, instanceInfoArray);
+    clusterSetup.addCluster(VCR_CLUSTER_NAME, true);
     HelixAdmin admin = new HelixAdminFactory().getHelixAdmin(zkConnectString);
+    // set ALLOW_PARTICIPANT_AUTO_JOIN
     HelixConfigScope configScope = new HelixConfigScopeBuilder(HelixConfigScope.ConfigScopeProperty.CLUSTER).
-        forCluster(clusterName).build();
+        forCluster(VCR_CLUSTER_NAME).build();
     Map<String, String> helixClusterProperties = new HashMap<String, String>();
     helixClusterProperties.put(ZKHelixManager.ALLOW_PARTICIPANT_AUTO_JOIN, String.valueOf(true));
     admin.setConfig(configScope, helixClusterProperties);
+    // setPersistBestPossibleAssignment
+    ConfigAccessor configAccessor = new ConfigAccessor(zkClient);
+    ClusterConfig clusterConfig = configAccessor.getClusterConfig(VCR_CLUSTER_NAME);
+    clusterConfig.setPersistBestPossibleAssignment(true);
+    configAccessor.setClusterConfig(VCR_CLUSTER_NAME, clusterConfig);
 
     String resourceName = "1";
     FullAutoModeISBuilder builder = new FullAutoModeISBuilder(resourceName);
@@ -93,46 +94,15 @@ public class HelixVcrClusterTest {
       builder.add(Integer.toString(i));
     }
     builder.setRebalanceStrategy(CrushRebalanceStrategy.class.getName());
-
     IdealState idealState = builder.build();
-    admin.addResource(clusterName, resourceName, idealState);
-    admin.rebalance(clusterName, resourceName, 3, "", "");
-    ConfigAccessor configAccessor = new ConfigAccessor(zkClient);
-    ClusterConfig clusterConfig = configAccessor.getClusterConfig(clusterName);
-    clusterConfig.setPersistBestPossibleAssignment(true);
-    configAccessor.setClusterConfig(clusterName, clusterConfig);
+    admin.addResource(VCR_CLUSTER_NAME, resourceName, idealState);
+    admin.rebalance(VCR_CLUSTER_NAME, resourceName, 3, "", "");
     System.out.println("before test Done");
   }
 
   @Test
   public void staticVcrClusterFactoryTest() throws Exception {
     Properties props = new Properties();
-    String hostName = "localhostTest";
-    int port = 12345;
-    List<String> assignedPartitions = Arrays.asList("0", "1");
-    props.setProperty("clustermap.cluster.name", "test");
-    props.setProperty("clustermap.datacenter.name", "DC1");
-    props.setProperty("clustermap.host.name", hostName);
-    props.setProperty("clustermap.port", Integer.toString(port));
-    props.setProperty("clustermap.default.partition.class", MockClusterMap.DEFAULT_PARTITION_CLASS);
-    props.setProperty("clustermap.resolve.hostnames", "false");
-    props.setProperty("vcr.assigned.partitions", String.join(",", assignedPartitions));
-    VerifiableProperties vProps = new VerifiableProperties(props);
-    CloudConfig cloudConfig = new CloudConfig(vProps);
-    ClusterMapConfig clusterMapConfig = new ClusterMapConfig(vProps);
-    VirtualReplicatorClusterFactory factory =
-        new StaticVcrClusterFactory(cloudConfig, clusterMapConfig, mockClusterMap);
-    VirtualReplicatorCluster virtualReplicatorCluster = factory.getVirtualReplicatorCluster();
-    assertEquals("CloudDataNode host name doesn't match", hostName,
-        virtualReplicatorCluster.getCurrentDataNodeId().getHostname());
-    assertEquals("CloudDataNode port doesn't match", port, virtualReplicatorCluster.getCurrentDataNodeId().getPort());
-    assertTrue("Partition assignment incorrect", assignedPartitions.equals(
-        virtualReplicatorCluster.getAssignedPartitionIds()
-            .stream()
-            .map(partitionId -> partitionId.toPathString())
-            .collect(Collectors.toList())));
-    assertEquals("Number of CloudDataNode should be 1", 1, virtualReplicatorCluster.getAllDataNodeIds().size());
-    assertEquals("CloudDataNode mismatch", virtualReplicatorCluster.getCurrentDataNodeId(),
-        virtualReplicatorCluster.getAllDataNodeIds().get(0));
+    Thread.sleep(10000000);
   }
 }
