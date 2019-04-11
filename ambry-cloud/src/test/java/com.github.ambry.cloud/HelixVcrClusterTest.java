@@ -16,18 +16,13 @@ package com.github.ambry.cloud;
 import com.github.ambry.clustermap.HelixAdminFactory;
 import com.github.ambry.clustermap.MockClusterAgentsFactory;
 import com.github.ambry.clustermap.MockClusterMap;
-import com.github.ambry.clustermap.VirtualReplicatorCluster;
-import com.github.ambry.clustermap.VirtualReplicatorClusterFactory;
 import com.github.ambry.config.CloudConfig;
 import com.github.ambry.config.ClusterMapConfig;
 import com.github.ambry.config.VerifiableProperties;
 import com.github.ambry.utils.TestUtils;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.stream.Collectors;
 import org.apache.helix.ConfigAccessor;
 import org.apache.helix.HelixAdmin;
 import org.apache.helix.controller.rebalancer.strategy.CrushRebalanceStrategy;
@@ -44,8 +39,6 @@ import org.apache.helix.model.builder.HelixConfigScopeBuilder;
 import org.apache.helix.tools.ClusterSetup;
 import org.junit.Before;
 import org.junit.Test;
-
-import static org.junit.Assert.*;
 
 
 /**
@@ -97,12 +90,30 @@ public class HelixVcrClusterTest {
     IdealState idealState = builder.build();
     admin.addResource(VCR_CLUSTER_NAME, resourceName, idealState);
     admin.rebalance(VCR_CLUSTER_NAME, resourceName, 3, "", "");
-    System.out.println("before test Done");
+    System.out.println("zk setup Done");
   }
 
   @Test
-  public void staticVcrClusterFactoryTest() throws Exception {
+  public void helixVcrClusterFactoryTest() throws Exception {
     Properties props = new Properties();
-    Thread.sleep(10000000);
+    props.setProperty("clustermap.host.name", "localhost");
+    props.setProperty("clustermap.resolve.hostnames", "false");
+    props.setProperty("clustermap.cluster.name", "clusterName");
+    props.setProperty("clustermap.datacenter.name", "DC1");
+    props.setProperty("clustermap.ssl.enabled.datacenters", "DC1,DC2");
+    props.setProperty("clustermap.port", "8123");
+    ClusterMapConfig clusterMapConfig = new ClusterMapConfig(new VerifiableProperties(props));
+
+    props = new Properties();
+    props.setProperty("vcr.ssl.port", "12345");
+    props.setProperty(CloudConfig.VCR_CLUSTER_ZK_CONNECT_STRING,
+        ZK_SERVER_HOSTNAME + ":" + Integer.toString(ZK_SERVER_PORT));
+    props.setProperty(CloudConfig.VCR_CLUSTER_NAME, VCR_CLUSTER_NAME);
+    CloudConfig cloudConfig = new CloudConfig(new VerifiableProperties(props));
+
+    HelixVcrCluster h = new HelixVcrCluster(cloudConfig, clusterMapConfig, mockClusterMap);
+    Thread.sleep(1000);
+    System.out.println(h.getAssignedPartitionIds());
+    System.out.println("Hello World done!"); //Display the string.
   }
 }

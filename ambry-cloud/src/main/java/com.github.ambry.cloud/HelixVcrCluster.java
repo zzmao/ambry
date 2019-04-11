@@ -60,6 +60,7 @@ public class HelixVcrCluster implements VirtualReplicatorCluster {
       throws Exception {
     currentDataNode = new CloudDataNode(cloudConfig, clusterMapConfig);
     List<? extends PartitionId> allPartitions = clusterMap.getAllPartitionIds(null);
+    System.out.println("all part: " + allPartitions);
     partitionIdMap = allPartitions.stream().collect(Collectors.toMap(PartitionId::toPathString, Function.identity()));
     vcrClusterName = cloudConfig.vcrClusterName;
     vcrInstanceName =
