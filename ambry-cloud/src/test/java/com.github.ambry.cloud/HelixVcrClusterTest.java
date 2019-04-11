@@ -49,6 +49,7 @@ public class HelixVcrClusterTest {
   private MockClusterMap mockClusterMap;
   private String ZK_SERVER_HOSTNAME = "localhost";
   private int ZK_SERVER_PORT = 31900;
+  private String ZK_CONNECT_STRING = ZK_SERVER_HOSTNAME + ":" + Integer.toString(ZK_SERVER_PORT);
   private String DC_NAME = "DC1";
   private byte DC_ID = (byte) 1;
   private TestUtils.ZkInfo zkInfo;
@@ -91,6 +92,10 @@ public class HelixVcrClusterTest {
     admin.addResource(VCR_CLUSTER_NAME, resourceName, idealState);
     admin.rebalance(VCR_CLUSTER_NAME, resourceName, 3, "", "");
     System.out.println("zk setup Done");
+
+    HelixControllerManager helixControllerManager = new HelixControllerManager(ZK_CONNECT_STRING, VCR_CLUSTER_NAME);
+    helixControllerManager.syncStart();
+    System.out.println("controller started");
   }
 
   @Test
