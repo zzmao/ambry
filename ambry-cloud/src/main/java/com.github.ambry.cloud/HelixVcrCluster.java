@@ -116,7 +116,7 @@ public class HelixVcrCluster implements VirtualReplicatorCluster {
     props.setProperty("clustermap.cluster.name", "clusterName");
     props.setProperty("clustermap.datacenter.name", "Datacenter");
     props.setProperty("clustermap.ssl.enabled.datacenters", "Datacenter,DC1");
-    props.setProperty("clustermap.port", "8900");
+    props.setProperty("clustermap.port", "8123");
     ClusterMapConfig clusterMapConfig = new ClusterMapConfig(new VerifiableProperties(props));
 
     props = new Properties();
@@ -129,9 +129,9 @@ public class HelixVcrCluster implements VirtualReplicatorCluster {
         new StaticClusterAgentsFactory(clusterMapConfig, "/Users/zemao/ambry/config/HardwareLayoutMultiPartition.json",
             "/Users/zemao/ambry/config/PartitionLayoutMultiPartition.json");
     HelixVcrCluster h = new HelixVcrCluster(cloudConfig, clusterMapConfig, staticClusterAgentsFactory.getClusterMap());
+    Thread.sleep(1000);
     System.out.println(h.getAssignedPartitionIds());
     System.out.println("Hello World done!"); //Display the string.
-    Thread.sleep(1000000);
   }
 }
 
