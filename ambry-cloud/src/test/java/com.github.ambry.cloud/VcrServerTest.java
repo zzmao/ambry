@@ -15,6 +15,7 @@ package com.github.ambry.cloud;
 
 import com.github.ambry.clustermap.MockClusterAgentsFactory;
 import com.github.ambry.clustermap.MockClusterMap;
+import com.github.ambry.config.CloudConfig;
 import com.github.ambry.config.VerifiableProperties;
 import com.github.ambry.notification.NotificationSystem;
 import java.util.Collections;
@@ -59,7 +60,34 @@ public class VcrServerTest {
     props.setProperty("clustermap.resolve.hostnames", "false");
     props.setProperty("server.scheduler.num.of.threads", "1");
     props.setProperty("num.io.threads", "1");
-    props.setProperty("vcr.assigned.partitions", "0,1");
+    props.setProperty(CloudConfig.VCR_ASSIGNED_PARTITIONS, "0,1");
+    props.setProperty(CloudConfig.VIRTUAL_REPLICATOR_CLUSTER_FACTORY_CLASS, virtualReplicatorClusterFactoryClass);
+    CloudDestinationFactory cloudDestinationFactory =
+        new LatchBasedInMemoryCloudDestinationFactory(new LatchBasedInMemoryCloudDestination(Collections.emptyList()));
+    VerifiableProperties verifiableProperties = new VerifiableProperties(props);
+    VcrServer vcrServer =
+        new VcrServer(verifiableProperties, mockClusterAgentsFactory, notificationSystem, cloudDestinationFactory);
+    vcrServer.startup();
+    vcrServer.shutdown();
+    mockClusterMap.cleanup();
+  }
+
+  @Test
+  public void testVCRServerH() throws Exception {
+    Properties props = new Properties();
+    props.setProperty("host.name", mockClusterMap.getDataNodes().get(0).getHostname());
+    int port = mockClusterMap.getDataNodes().get(0).getPort();
+    props.setProperty("port", Integer.toString(port));
+    props.setProperty("clustermap.cluster.name", "test");
+    props.setProperty("clustermap.datacenter.name", "DC1");
+    props.setProperty("clustermap.host.name", "localhost");
+    props.setProperty("clustermap.port", Integer.toString(port));
+    props.setProperty("clustermap.default.partition.class", MockClusterMap.DEFAULT_PARTITION_CLASS);
+    props.setProperty("clustermap.resolve.hostnames", "false");
+    props.setProperty("server.scheduler.num.of.threads", "1");
+    props.setProperty("num.io.threads", "1");
+    props.setProperty(CloudConfig.VCR_ASSIGNED_PARTITIONS, "0,1");
+    props.setProperty(CloudConfig.VIRTUAL_REPLICATOR_CLUSTER_FACTORY_CLASS, HelixVcrClusterFactory.class.getName());
     CloudDestinationFactory cloudDestinationFactory =
         new LatchBasedInMemoryCloudDestinationFactory(new LatchBasedInMemoryCloudDestination(Collections.emptyList()));
     VerifiableProperties verifiableProperties = new VerifiableProperties(props);
