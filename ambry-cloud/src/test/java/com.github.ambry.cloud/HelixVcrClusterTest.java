@@ -19,6 +19,7 @@ import com.github.ambry.clustermap.MockClusterMap;
 import com.github.ambry.config.CloudConfig;
 import com.github.ambry.config.ClusterMapConfig;
 import com.github.ambry.config.VerifiableProperties;
+import com.github.ambry.utils.HelixControllerManager;
 import com.github.ambry.utils.TestUtils;
 import java.util.HashMap;
 import java.util.Map;
