@@ -38,6 +38,7 @@ import org.apache.helix.model.LeaderStandbySMD;
 import org.apache.helix.model.builder.FullAutoModeISBuilder;
 import org.apache.helix.model.builder.HelixConfigScopeBuilder;
 import org.apache.helix.tools.ClusterSetup;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -55,6 +56,7 @@ public class HelixVcrClusterTest {
   private byte DC_ID = (byte) 1;
   private TestUtils.ZkInfo zkInfo;
   private String VCR_CLUSTER_NAME = "vcrTestCluster";
+  private HelixControllerManager helixControllerManager;
 
   @Before
   public void setup() throws Exception {
@@ -63,13 +65,12 @@ public class HelixVcrClusterTest {
     zkInfo = new TestUtils.ZkInfo(TestUtils.getTempDir("helixVcr"), DC_NAME, DC_ID, ZK_SERVER_PORT, true);
 
     System.out.println("zk start done");
-    String zkConnectString = ZK_SERVER_HOSTNAME + ":" + Integer.toString(ZK_SERVER_PORT);
     HelixZkClient zkClient =
-        SharedZkClientFactory.getInstance().buildZkClient(new HelixZkClient.ZkConnectionConfig(zkConnectString));
+        SharedZkClientFactory.getInstance().buildZkClient(new HelixZkClient.ZkConnectionConfig(ZK_CONNECT_STRING));
     zkClient.setZkSerializer(new ZNRecordSerializer());
     ClusterSetup clusterSetup = new ClusterSetup(zkClient);
     clusterSetup.addCluster(VCR_CLUSTER_NAME, true);
-    HelixAdmin admin = new HelixAdminFactory().getHelixAdmin(zkConnectString);
+    HelixAdmin admin = new HelixAdminFactory().getHelixAdmin(ZK_CONNECT_STRING);
     // set ALLOW_PARTICIPANT_AUTO_JOIN
     HelixConfigScope configScope = new HelixConfigScopeBuilder(HelixConfigScope.ConfigScopeProperty.CLUSTER).
         forCluster(VCR_CLUSTER_NAME).build();
@@ -85,7 +86,7 @@ public class HelixVcrClusterTest {
     String resourceName = "1";
     FullAutoModeISBuilder builder = new FullAutoModeISBuilder(resourceName);
     builder.setStateModel(LeaderStandbySMD.name);
-    for (int i = 0; i < 12; i++) {
+    for (int i = 0; i < 1; i++) {
       builder.add(Integer.toString(i));
     }
     builder.setRebalanceStrategy(CrushRebalanceStrategy.class.getName());
@@ -94,9 +95,15 @@ public class HelixVcrClusterTest {
     admin.rebalance(VCR_CLUSTER_NAME, resourceName, 3, "", "");
     System.out.println("zk setup Done");
 
-    HelixControllerManager helixControllerManager = new HelixControllerManager(ZK_CONNECT_STRING, VCR_CLUSTER_NAME);
+    helixControllerManager = new HelixControllerManager(ZK_CONNECT_STRING, VCR_CLUSTER_NAME);
     helixControllerManager.syncStart();
     System.out.println("controller started");
+  }
+
+  @After
+  public void cleanup() {
+    helixControllerManager.syncStop();
+    zkInfo.shutdown();
   }
 
   @Test
