@@ -16,6 +16,7 @@ package com.github.ambry.cloud;
 import com.github.ambry.clustermap.HelixAdminFactory;
 import com.github.ambry.clustermap.MockClusterAgentsFactory;
 import com.github.ambry.clustermap.MockClusterMap;
+import com.github.ambry.clustermap.PartitionId;
 import com.github.ambry.config.CloudConfig;
 import com.github.ambry.config.ClusterMapConfig;
 import com.github.ambry.config.VerifiableProperties;
@@ -38,33 +39,35 @@ import org.apache.helix.model.LeaderStandbySMD;
 import org.apache.helix.model.builder.FullAutoModeISBuilder;
 import org.apache.helix.model.builder.HelixConfigScopeBuilder;
 import org.apache.helix.tools.ClusterSetup;
-import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /**
  * Test of HelixVcrClusterTest.
  */
 public class HelixVcrClusterTest {
-  private MockClusterAgentsFactory mockClusterAgentsFactory;
-  private MockClusterMap mockClusterMap;
-  private String ZK_SERVER_HOSTNAME = "localhost";
-  private int ZK_SERVER_PORT = 31900;
-  private String ZK_CONNECT_STRING = ZK_SERVER_HOSTNAME + ":" + Integer.toString(ZK_SERVER_PORT);
-  private String DC_NAME = "DC1";
-  private byte DC_ID = (byte) 1;
-  private TestUtils.ZkInfo zkInfo;
-  private String VCR_CLUSTER_NAME = "vcrTestCluster";
-  private HelixControllerManager helixControllerManager;
+  private final static Logger logger = LoggerFactory.getLogger(HelixVcrClusterTest.class);
+  private static MockClusterAgentsFactory mockClusterAgentsFactory;
+  private static MockClusterMap mockClusterMap;
+  private static final String ZK_SERVER_HOSTNAME = "localhost";
+  private static final int ZK_SERVER_PORT = 31900;
+  private static final String ZK_CONNECT_STRING = ZK_SERVER_HOSTNAME + ":" + Integer.toString(ZK_SERVER_PORT);
+  private static final String DC_NAME = "DC1";
+  private static final byte DC_ID = (byte) 1;
+  private static TestUtils.ZkInfo zkInfo;
+  private static final String VCR_CLUSTER_NAME = "vcrTestCluster";
+  private static HelixControllerManager helixControllerManager;
 
-  @Before
-  public void setup() throws Exception {
+  @BeforeClass
+  public static void beforeClass() throws Exception {
     mockClusterAgentsFactory = new MockClusterAgentsFactory(false, 1, 1, 2);
     mockClusterMap = mockClusterAgentsFactory.getClusterMap();
     zkInfo = new TestUtils.ZkInfo(TestUtils.getTempDir("helixVcr"), DC_NAME, DC_ID, ZK_SERVER_PORT, true);
-
-    System.out.println("zk start done");
     HelixZkClient zkClient =
         SharedZkClientFactory.getInstance().buildZkClient(new HelixZkClient.ZkConnectionConfig(ZK_CONNECT_STRING));
     zkClient.setZkSerializer(new ZNRecordSerializer());
@@ -86,22 +89,21 @@ public class HelixVcrClusterTest {
     String resourceName = "1";
     FullAutoModeISBuilder builder = new FullAutoModeISBuilder(resourceName);
     builder.setStateModel(LeaderStandbySMD.name);
-    for (int i = 0; i < 2; i++) {
-      builder.add(Integer.toString(i));
+    for (PartitionId partitionId : mockClusterMap.getAllPartitionIds(null)) {
+      builder.add(partitionId.toPathString());
     }
     builder.setRebalanceStrategy(CrushRebalanceStrategy.class.getName());
     IdealState idealState = builder.build();
     admin.addResource(VCR_CLUSTER_NAME, resourceName, idealState);
     admin.rebalance(VCR_CLUSTER_NAME, resourceName, 3, "", "");
-    System.out.println("zk setup Done");
-
+    logger.info("ZooKeeper cluster info setup done.");
     helixControllerManager = new HelixControllerManager(ZK_CONNECT_STRING, VCR_CLUSTER_NAME);
     helixControllerManager.syncStart();
-    System.out.println("controller started");
+    logger.info("HelixControllerManager started successfully.");
   }
 
-  @After
-  public void cleanup() {
+  @AfterClass
+  public static void afterClass() {
     helixControllerManager.syncStop();
     zkInfo.shutdown();
   }
@@ -126,8 +128,8 @@ public class HelixVcrClusterTest {
 
     HelixVcrCluster helixVcrCluster = new HelixVcrCluster(cloudConfig, clusterMapConfig, mockClusterMap);
     Thread.sleep(1000);
-    System.out.println(helixVcrCluster.getAssignedPartitionIds());
+    Assert.assertEquals("Partition assignment not correct.", helixVcrCluster.getAssignedPartitionIds(),
+        mockClusterMap.getAllPartitionIds(null));
     helixVcrCluster.close();
-    System.out.println("Hello World done!"); //Display the string.
   }
 }
