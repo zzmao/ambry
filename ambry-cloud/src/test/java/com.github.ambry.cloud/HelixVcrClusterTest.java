@@ -124,9 +124,10 @@ public class HelixVcrClusterTest {
     props.setProperty(CloudConfig.VCR_CLUSTER_NAME, VCR_CLUSTER_NAME);
     CloudConfig cloudConfig = new CloudConfig(new VerifiableProperties(props));
 
-    HelixVcrCluster h = new HelixVcrCluster(cloudConfig, clusterMapConfig, mockClusterMap);
+    HelixVcrCluster helixVcrCluster = new HelixVcrCluster(cloudConfig, clusterMapConfig, mockClusterMap);
     Thread.sleep(1000);
-    System.out.println(h.getAssignedPartitionIds());
+    System.out.println(helixVcrCluster.getAssignedPartitionIds());
+    helixVcrCluster.close();
     System.out.println("Hello World done!"); //Display the string.
   }
 }

@@ -17,17 +17,14 @@ import com.github.ambry.clustermap.ClusterMap;
 import com.github.ambry.clustermap.ClusterMapUtils;
 import com.github.ambry.clustermap.DataNodeId;
 import com.github.ambry.clustermap.PartitionId;
-import com.github.ambry.clustermap.StaticClusterAgentsFactory;
 import com.github.ambry.clustermap.VirtualReplicatorCluster;
 import com.github.ambry.config.CloudConfig;
 import com.github.ambry.config.ClusterMapConfig;
-import com.github.ambry.config.VerifiableProperties;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.helix.HelixAdmin;
@@ -35,13 +32,15 @@ import org.apache.helix.HelixManager;
 import org.apache.helix.HelixManagerFactory;
 import org.apache.helix.InstanceType;
 import org.apache.helix.model.LeaderStandbySMD;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /**
  * Helix Based VCR Cluster.
  */
 public class HelixVcrCluster implements VirtualReplicatorCluster {
-
+  private final static Logger logger = LoggerFactory.getLogger(HelixVcrCluster.class);
   private final DataNodeId currentDataNode;
   private final String vcrClusterName;
   private final String vcrInstanceName;
@@ -49,6 +48,7 @@ public class HelixVcrCluster implements VirtualReplicatorCluster {
   private final HelixAdmin helixAdmin;
   private final Map<String, PartitionId> partitionIdMap;
   private final HashSet<PartitionId> assignedPartitionIds = new HashSet<>();
+  private final HelixVcrClusterMetrics metrics;
 
   /**
    * Construct the helix VCR cluster.
@@ -60,7 +60,7 @@ public class HelixVcrCluster implements VirtualReplicatorCluster {
       throws Exception {
     currentDataNode = new CloudDataNode(cloudConfig, clusterMapConfig);
     List<? extends PartitionId> allPartitions = clusterMap.getAllPartitionIds(null);
-    System.out.println("all part: " + allPartitions);
+    logger.trace("All partitions from clusterMap: " + allPartitions);
     partitionIdMap = allPartitions.stream().collect(Collectors.toMap(PartitionId::toPathString, Function.identity()));
     vcrClusterName = cloudConfig.vcrClusterName;
     vcrInstanceName =
@@ -72,24 +72,33 @@ public class HelixVcrCluster implements VirtualReplicatorCluster {
         .registerStateModelFactory(LeaderStandbySMD.name, new HelixVcrStateModelFactory(this));
     manager.connect();
     helixAdmin = manager.getClusterManagmentTool();
+    metrics = new HelixVcrClusterMetrics(clusterMap.getMetricRegistry());
+    logger.info("HelixVcrCluster started successfully.");
   }
 
   synchronized public void addPartition(String partitionIdStr) {
-    System.out.println("addPar " + partitionIdStr);
     if (partitionIdMap.containsKey(partitionIdStr)) {
       assignedPartitionIds.add(partitionIdMap.get(partitionIdStr));
+      logger.info("Added partition {} to current VCR: ", partitionIdStr);
+    } else {
+      logger.trace("Partition {} not in clusterMap on add.", partitionIdStr);
+      metrics.partitionIdNotInClusterMapOnAdd.inc();
     }
   }
 
   synchronized public void removePartition(String partitionIdStr) {
-    System.out.println("removePar " + partitionIdStr);
     if (partitionIdMap.containsKey(partitionIdStr)) {
       assignedPartitionIds.remove(partitionIdMap.get(partitionIdStr));
+      logger.info("Removed partition {} to current VCR: ", partitionIdStr);
+    } else {
+      logger.trace("Partition {} not in clusterMap on remove.", partitionIdStr);
+      metrics.partitionIdNotInClusterMapOnRemove.inc();
     }
   }
 
   @Override
   public List<? extends DataNodeId> getAllDataNodeIds() {
+    // TODO: return all VCR nodes for recovery.
     return Collections.singletonList(currentDataNode);
   }
 
@@ -107,32 +116,6 @@ public class HelixVcrCluster implements VirtualReplicatorCluster {
   public void close() {
     helixAdmin.close();
     manager.disconnect();
-  }
-
-  public static void main(String[] args) throws Exception {
-    System.out.println("Hello World!"); //Display the string.
-    Properties props = new Properties();
-    props.setProperty("clustermap.host.name", "localhost");
-    props.setProperty("clustermap.resolve.hostnames", "false");
-    props.setProperty("clustermap.cluster.name", "clusterName");
-    props.setProperty("clustermap.datacenter.name", "Datacenter");
-    props.setProperty("clustermap.ssl.enabled.datacenters", "Datacenter,DC1");
-    props.setProperty("clustermap.port", "8123");
-    ClusterMapConfig clusterMapConfig = new ClusterMapConfig(new VerifiableProperties(props));
-
-    props = new Properties();
-    props.setProperty("vcr.ssl.port", "12345");
-    props.setProperty(CloudConfig.VCR_CLUSTER_ZK_CONNECT_STRING, "zemao-ld1.linkedin.biz:2181");
-    props.setProperty(CloudConfig.VCR_CLUSTER_NAME, "vcrCluster");
-    CloudConfig cloudConfig = new CloudConfig(new VerifiableProperties(props));
-
-    StaticClusterAgentsFactory staticClusterAgentsFactory =
-        new StaticClusterAgentsFactory(clusterMapConfig, "/Users/zemao/ambry/config/HardwareLayoutMultiPartition.json",
-            "/Users/zemao/ambry/config/PartitionLayoutMultiPartition.json");
-    HelixVcrCluster h = new HelixVcrCluster(cloudConfig, clusterMapConfig, staticClusterAgentsFactory.getClusterMap());
-    Thread.sleep(1000);
-    System.out.println(h.getAssignedPartitionIds());
-    System.out.println("Hello World done!"); //Display the string.
   }
 }
 
