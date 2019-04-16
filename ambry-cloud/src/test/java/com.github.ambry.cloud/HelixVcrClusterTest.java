@@ -86,7 +86,7 @@ public class HelixVcrClusterTest {
     String resourceName = "1";
     FullAutoModeISBuilder builder = new FullAutoModeISBuilder(resourceName);
     builder.setStateModel(LeaderStandbySMD.name);
-    for (int i = 0; i < 1; i++) {
+    for (int i = 0; i < 2; i++) {
       builder.add(Integer.toString(i));
     }
     builder.setRebalanceStrategy(CrushRebalanceStrategy.class.getName());
