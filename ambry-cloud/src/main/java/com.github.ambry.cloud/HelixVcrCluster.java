@@ -38,7 +38,7 @@ import org.apache.helix.model.LeaderStandbySMD;
 
 
 /**
- * VCR Cluster based on static partition assignment.
+ * Helix Based VCR Cluster.
  */
 public class HelixVcrCluster implements VirtualReplicatorCluster {
 
@@ -51,7 +51,7 @@ public class HelixVcrCluster implements VirtualReplicatorCluster {
   private final HashSet<PartitionId> assignedPartitionIds = new HashSet<>();
 
   /**
-   * Construct the static VCR cluster.
+   * Construct the helix VCR cluster.
    * @param cloudConfig The cloud configuration to use.
    * @param clusterMapConfig The clustermap configuration to use.
    * @param clusterMap The clustermap to use.

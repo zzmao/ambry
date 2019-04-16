@@ -24,11 +24,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * {@link StateModel} to use when the VCR participants register to Helix. The methods are callbacks
- * that get called within a participant whenever its state changes in Helix. For now these are no-ops.
- *
- * In the critical path of puts and gets, there are no leader replicas in Ambry. Every replica can serve reads and
- * writes. However, going forward, it is useful to have one of the replicas chosen as a LEADER for purposes such as
- * replication.
+ * that get called within a participant whenever its state changes in Helix.
  */
 @StateModelInfo(initialState = "OFFLINE", states = {"LEADER", "STANDBY"})
 public class HelixVcrStateModel extends StateModel {

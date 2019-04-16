@@ -21,7 +21,7 @@ import com.github.ambry.config.ClusterMapConfig;
 
 
 /**
- * {@link HelixVcrClusterFactory} to generate VCR Cluster for static partition assignment.
+ * {@link HelixVcrClusterFactory} to generate {@link HelixVcrCluster} for dynamic partition assignment.
  */
 public class HelixVcrClusterFactory implements VirtualReplicatorClusterFactory {
 

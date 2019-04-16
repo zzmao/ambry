@@ -13,13 +13,12 @@
  */
 package com.github.ambry.cloud;
 
-import com.github.ambry.clustermap.AmbryStateModel;
 import org.apache.helix.participant.statemachine.StateModel;
 import org.apache.helix.participant.statemachine.StateModelFactory;
 
 
 /**
- * {@link HelixVcrStateModelFactory} to generate VCR Cluster for static partition assignment.
+ * A factory for creating {@link HelixVcrStateModel}
  */
 
 public class HelixVcrStateModelFactory extends StateModelFactory<StateModel> {
@@ -34,7 +33,7 @@ public class HelixVcrStateModelFactory extends StateModelFactory<StateModel> {
    * @param resourceName the resource name for which this state model is being created.
    * @param partitionName the partition name for which this state model is being created.
    *
-   * @return an instance of {@link AmbryStateModel}.
+   * @return an instance of {@link HelixVcrStateModel}.
    */
   @Override
   public StateModel createNewStateModel(String resourceName, String partitionName) {
