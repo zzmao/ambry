@@ -37,30 +37,30 @@ public class HelixVcrStateModel extends StateModel {
 
   @Transition(to = "STANDBY", from = "OFFLINE")
   public void onBecomeStandbyFromOffline(Message message, NotificationContext context) {
-    logger.info("Becoming STANDBY from OFFLINE");
+    logger.info("Becoming STANDBY from OFFLINE of Partition {}", message.getPartitionName());
   }
 
   @Transition(to = "LEADER", from = "STANDBY")
   public void onBecomeLeaderFromStandby(Message message, NotificationContext context) {
+    logger.info("Becoming LEADER from STANDBY of Partition {}", message.getPartitionName());
     helixVcrCluster.addPartition(message.getPartitionName());
-    logger.info("Becoming LEADER from STANDBY");
   }
 
   @Transition(to = "STANDBY", from = "LEADER")
   public void onBecomeStandbyFromLeader(Message message, NotificationContext context) {
+    logger.info("Becoming STANDBY from LEADER of Partition {}", message.getPartitionName());
     helixVcrCluster.removePartition(message.getPartitionName());
-    logger.info("Becoming STANDBY from LEADER");
   }
 
   @Transition(to = "OFFLINE", from = "STANDBY")
   public void onBecomeOfflineFromStandby(Message message, NotificationContext context) {
-    logger.info("Becoming OFFLINE from STANDBY");
+    logger.info("Becoming OFFLINE from STANDBY of Partition {}", message.getPartitionName());
   }
 
   @Transition(to = "OFFLINE", from = "LEADER")
   public void onBecomeOfflineFromLeader(Message message, NotificationContext context) {
+    logger.info("Becoming OFFLINE from LEADER of Partition {}", message.getPartitionName());
     helixVcrCluster.removePartition(message.getPartitionName());
-    logger.info("Becoming OFFLINE from LEADER");
   }
 
   @Override
