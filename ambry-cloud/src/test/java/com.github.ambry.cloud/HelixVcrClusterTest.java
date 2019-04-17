@@ -13,32 +13,14 @@
  */
 package com.github.ambry.cloud;
 
-import com.github.ambry.clustermap.HelixAdminFactory;
 import com.github.ambry.clustermap.MockClusterAgentsFactory;
 import com.github.ambry.clustermap.MockClusterMap;
-import com.github.ambry.clustermap.PartitionId;
 import com.github.ambry.config.CloudConfig;
 import com.github.ambry.config.ClusterMapConfig;
 import com.github.ambry.config.VerifiableProperties;
 import com.github.ambry.utils.HelixControllerManager;
 import com.github.ambry.utils.TestUtils;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Properties;
-import org.apache.helix.ConfigAccessor;
-import org.apache.helix.HelixAdmin;
-import org.apache.helix.controller.rebalancer.strategy.CrushRebalanceStrategy;
-import org.apache.helix.manager.zk.ZKHelixManager;
-import org.apache.helix.manager.zk.ZNRecordSerializer;
-import org.apache.helix.manager.zk.client.HelixZkClient;
-import org.apache.helix.manager.zk.client.SharedZkClientFactory;
-import org.apache.helix.model.ClusterConfig;
-import org.apache.helix.model.HelixConfigScope;
-import org.apache.helix.model.IdealState;
-import org.apache.helix.model.LeaderStandbySMD;
-import org.apache.helix.model.builder.FullAutoModeISBuilder;
-import org.apache.helix.model.builder.HelixConfigScopeBuilder;
-import org.apache.helix.tools.ClusterSetup;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -57,8 +39,6 @@ public class HelixVcrClusterTest {
   private static final String ZK_SERVER_HOSTNAME = "localhost";
   private static final int ZK_SERVER_PORT = 31900;
   private static final String ZK_CONNECT_STRING = ZK_SERVER_HOSTNAME + ":" + Integer.toString(ZK_SERVER_PORT);
-  private static final String DC_NAME = "DC1";
-  private static final byte DC_ID = (byte) 1;
   private static TestUtils.ZkInfo zkInfo;
   private static final String VCR_CLUSTER_NAME = "vcrTestCluster";
   private static HelixControllerManager helixControllerManager;
@@ -67,39 +47,8 @@ public class HelixVcrClusterTest {
   public static void beforeClass() throws Exception {
     mockClusterAgentsFactory = new MockClusterAgentsFactory(false, 1, 1, 2);
     mockClusterMap = mockClusterAgentsFactory.getClusterMap();
-    zkInfo = new TestUtils.ZkInfo(TestUtils.getTempDir("helixVcr"), DC_NAME, DC_ID, ZK_SERVER_PORT, true);
-    HelixZkClient zkClient =
-        SharedZkClientFactory.getInstance().buildZkClient(new HelixZkClient.ZkConnectionConfig(ZK_CONNECT_STRING));
-    zkClient.setZkSerializer(new ZNRecordSerializer());
-    ClusterSetup clusterSetup = new ClusterSetup(zkClient);
-    clusterSetup.addCluster(VCR_CLUSTER_NAME, true);
-    HelixAdmin admin = new HelixAdminFactory().getHelixAdmin(ZK_CONNECT_STRING);
-    // set ALLOW_PARTICIPANT_AUTO_JOIN
-    HelixConfigScope configScope = new HelixConfigScopeBuilder(HelixConfigScope.ConfigScopeProperty.CLUSTER).
-        forCluster(VCR_CLUSTER_NAME).build();
-    Map<String, String> helixClusterProperties = new HashMap<String, String>();
-    helixClusterProperties.put(ZKHelixManager.ALLOW_PARTICIPANT_AUTO_JOIN, String.valueOf(true));
-    admin.setConfig(configScope, helixClusterProperties);
-    // setPersistBestPossibleAssignment
-    ConfigAccessor configAccessor = new ConfigAccessor(zkClient);
-    ClusterConfig clusterConfig = configAccessor.getClusterConfig(VCR_CLUSTER_NAME);
-    clusterConfig.setPersistBestPossibleAssignment(true);
-    configAccessor.setClusterConfig(VCR_CLUSTER_NAME, clusterConfig);
-
-    String resourceName = "1";
-    FullAutoModeISBuilder builder = new FullAutoModeISBuilder(resourceName);
-    builder.setStateModel(LeaderStandbySMD.name);
-    for (PartitionId partitionId : mockClusterMap.getAllPartitionIds(null)) {
-      builder.add(partitionId.toPathString());
-    }
-    builder.setRebalanceStrategy(CrushRebalanceStrategy.class.getName());
-    IdealState idealState = builder.build();
-    admin.addResource(VCR_CLUSTER_NAME, resourceName, idealState);
-    admin.rebalance(VCR_CLUSTER_NAME, resourceName, 3, "", "");
-    logger.info("ZooKeeper cluster info setup done.");
-    helixControllerManager = new HelixControllerManager(ZK_CONNECT_STRING, VCR_CLUSTER_NAME);
-    helixControllerManager.syncStart();
-    logger.info("HelixControllerManager started successfully.");
+    zkInfo = new TestUtils.ZkInfo(TestUtils.getTempDir("helixVcr"), "DC1", (byte)1, ZK_SERVER_PORT, true);
+    VcrTestUtil.populateZkInfoAndStartController(ZK_CONNECT_STRING, VCR_CLUSTER_NAME, mockClusterMap);
   }
 
   @AfterClass
