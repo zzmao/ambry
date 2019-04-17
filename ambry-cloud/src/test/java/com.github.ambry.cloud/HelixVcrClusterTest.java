@@ -15,6 +15,7 @@ package com.github.ambry.cloud;
 
 import com.github.ambry.clustermap.MockClusterAgentsFactory;
 import com.github.ambry.clustermap.MockClusterMap;
+import com.github.ambry.clustermap.VirtualReplicatorCluster;
 import com.github.ambry.config.CloudConfig;
 import com.github.ambry.config.ClusterMapConfig;
 import com.github.ambry.config.VerifiableProperties;
@@ -47,8 +48,9 @@ public class HelixVcrClusterTest {
   public static void beforeClass() throws Exception {
     mockClusterAgentsFactory = new MockClusterAgentsFactory(false, 1, 1, 2);
     mockClusterMap = mockClusterAgentsFactory.getClusterMap();
-    zkInfo = new TestUtils.ZkInfo(TestUtils.getTempDir("helixVcr"), "DC1", (byte)1, ZK_SERVER_PORT, true);
-    VcrTestUtil.populateZkInfoAndStartController(ZK_CONNECT_STRING, VCR_CLUSTER_NAME, mockClusterMap);
+    zkInfo = new TestUtils.ZkInfo(TestUtils.getTempDir("helixVcr"), "DC1", (byte) 1, ZK_SERVER_PORT, true);
+    helixControllerManager =
+        VcrTestUtil.populateZkInfoAndStartController(ZK_CONNECT_STRING, VCR_CLUSTER_NAME, mockClusterMap);
   }
 
   @AfterClass
@@ -75,7 +77,8 @@ public class HelixVcrClusterTest {
     props.setProperty(CloudConfig.VCR_CLUSTER_NAME, VCR_CLUSTER_NAME);
     CloudConfig cloudConfig = new CloudConfig(new VerifiableProperties(props));
 
-    HelixVcrCluster helixVcrCluster = new HelixVcrCluster(cloudConfig, clusterMapConfig, mockClusterMap);
+    VirtualReplicatorCluster helixVcrCluster =
+        new HelixVcrClusterFactory(cloudConfig, clusterMapConfig, mockClusterMap).getVirtualReplicatorCluster();
     Thread.sleep(1000);
     Assert.assertEquals("Partition assignment not correct.", helixVcrCluster.getAssignedPartitionIds(),
         mockClusterMap.getAllPartitionIds(null));

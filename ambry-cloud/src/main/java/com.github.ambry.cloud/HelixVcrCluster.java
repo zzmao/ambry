@@ -20,6 +20,7 @@ import com.github.ambry.clustermap.PartitionId;
 import com.github.ambry.clustermap.VirtualReplicatorCluster;
 import com.github.ambry.config.CloudConfig;
 import com.github.ambry.config.ClusterMapConfig;
+import com.github.ambry.utils.Utils;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -58,6 +59,14 @@ public class HelixVcrCluster implements VirtualReplicatorCluster {
    */
   public HelixVcrCluster(CloudConfig cloudConfig, ClusterMapConfig clusterMapConfig, ClusterMap clusterMap)
       throws Exception {
+    if (Utils.isNullOrEmpty(cloudConfig.VCR_CLUSTER_ZK_CONNECT_STRING)) {
+      throw new IllegalArgumentException("Missing value for " + CloudConfig.VCR_CLUSTER_ZK_CONNECT_STRING);
+    } else if (Utils.isNullOrEmpty(cloudConfig.VCR_CLUSTER_NAME)) {
+      throw new IllegalArgumentException("Missing value for " + CloudConfig.VCR_CLUSTER_NAME);
+    } else if (Utils.isNullOrEmpty(cloudConfig.VCR_CLUSTER_ZK_CONNECT_STRING)) {
+      throw new IllegalArgumentException("Missing value for " + CloudConfig.VCR_CLUSTER_ZK_CONNECT_STRING);
+    }
+
     currentDataNode = new CloudDataNode(cloudConfig, clusterMapConfig);
     List<? extends PartitionId> allPartitions = clusterMap.getAllPartitionIds(null);
     logger.trace("All partitions from clusterMap: " + allPartitions);

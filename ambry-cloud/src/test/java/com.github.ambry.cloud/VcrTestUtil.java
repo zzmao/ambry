@@ -56,6 +56,13 @@ public class VcrTestUtil {
     return new VcrServer(properties, clusterAgentsFactory, notificationSystem, cloudDestinationFactory);
   }
 
+  /**
+   * Populate info on ZooKeeper server and start {@link HelixControllerManager}.
+   * @param zKConnectString zk connect string to zk server.
+   * @param vcrClusterName the vcr cluster name.
+   * @param clusterMap the {@link ClusterMap} to use.
+   * @return the created {@link HelixControllerManager}.
+   */
   public static HelixControllerManager populateZkInfoAndStartController(String zKConnectString, String vcrClusterName,
       ClusterMap clusterMap) {
     HelixZkClient zkClient =
@@ -67,10 +74,10 @@ public class VcrTestUtil {
     // set ALLOW_PARTICIPANT_AUTO_JOIN
     HelixConfigScope configScope = new HelixConfigScopeBuilder(HelixConfigScope.ConfigScopeProperty.CLUSTER).
         forCluster(vcrClusterName).build();
-    Map<String, String> helixClusterProperties = new HashMap<String, String>();
+    Map<String, String> helixClusterProperties = new HashMap<>();
     helixClusterProperties.put(ZKHelixManager.ALLOW_PARTICIPANT_AUTO_JOIN, String.valueOf(true));
     admin.setConfig(configScope, helixClusterProperties);
-    // setPersistBestPossibleAssignment
+    // set PersistBestPossibleAssignment
     ConfigAccessor configAccessor = new ConfigAccessor(zkClient);
     ClusterConfig clusterConfig = configAccessor.getClusterConfig(vcrClusterName);
     clusterConfig.setPersistBestPossibleAssignment(true);
