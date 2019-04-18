@@ -22,10 +22,11 @@ import com.github.ambry.config.CloudConfig;
 import com.github.ambry.config.ClusterMapConfig;
 import com.github.ambry.utils.Utils;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.helix.HelixAdmin;
@@ -48,7 +49,7 @@ public class HelixVcrCluster implements VirtualReplicatorCluster {
   private final HelixManager manager;
   private final HelixAdmin helixAdmin;
   private final Map<String, PartitionId> partitionIdMap;
-  private final HashSet<PartitionId> assignedPartitionIds = new HashSet<>();
+  private final Set<PartitionId> assignedPartitionIds = new ConcurrentHashMap<PartitionId, Boolean>().newKeySet();
   private final HelixVcrClusterMetrics metrics;
 
   /**
@@ -63,13 +64,11 @@ public class HelixVcrCluster implements VirtualReplicatorCluster {
       throw new IllegalArgumentException("Missing value for " + CloudConfig.VCR_CLUSTER_ZK_CONNECT_STRING);
     } else if (Utils.isNullOrEmpty(cloudConfig.VCR_CLUSTER_NAME)) {
       throw new IllegalArgumentException("Missing value for " + CloudConfig.VCR_CLUSTER_NAME);
-    } else if (Utils.isNullOrEmpty(cloudConfig.VCR_CLUSTER_ZK_CONNECT_STRING)) {
-      throw new IllegalArgumentException("Missing value for " + CloudConfig.VCR_CLUSTER_ZK_CONNECT_STRING);
     }
 
     currentDataNode = new CloudDataNode(cloudConfig, clusterMapConfig);
     List<? extends PartitionId> allPartitions = clusterMap.getAllPartitionIds(null);
-    logger.trace("All partitions from clusterMap: " + allPartitions);
+    logger.trace("All partitions from clusterMap: {}.", allPartitions);
     partitionIdMap = allPartitions.stream().collect(Collectors.toMap(PartitionId::toPathString, Function.identity()));
     vcrClusterName = cloudConfig.vcrClusterName;
     vcrInstanceName =
@@ -85,7 +84,12 @@ public class HelixVcrCluster implements VirtualReplicatorCluster {
     logger.info("HelixVcrCluster started successfully.");
   }
 
-  synchronized public void addPartition(String partitionIdStr) {
+  /**
+   * Add {@link PartitionId} to assignedPartitionIds set, if {@parm partitionIdStr} valid.
+   * Used in {@link HelixVcrStateModel} if current VCR becomes leader of a partition.
+   * @param partitionIdStr The partitionIdStr notified by Helix.
+   */
+  public void addPartition(String partitionIdStr) {
     if (partitionIdMap.containsKey(partitionIdStr)) {
       assignedPartitionIds.add(partitionIdMap.get(partitionIdStr));
       logger.info("Added partition {} to current VCR: ", partitionIdStr);
@@ -95,10 +99,15 @@ public class HelixVcrCluster implements VirtualReplicatorCluster {
     }
   }
 
-  synchronized public void removePartition(String partitionIdStr) {
+  /**
+   * Remove {@link PartitionId} from assignedPartitionIds set, if {@parm partitionIdStr} valid.
+   * Used in {@link HelixVcrStateModel} if current VCR becomes offline or standby a partition.
+   * @param partitionIdStr The partitionIdStr notified by Helix.
+   */
+  public void removePartition(String partitionIdStr) {
     if (partitionIdMap.containsKey(partitionIdStr)) {
       assignedPartitionIds.remove(partitionIdMap.get(partitionIdStr));
-      logger.info("Removed partition {} to current VCR: ", partitionIdStr);
+      logger.info("Removed partition {} from current VCR: ", partitionIdStr);
     } else {
       logger.trace("Partition {} not in clusterMap on remove.", partitionIdStr);
       metrics.partitionIdNotInClusterMapOnRemove.inc();
