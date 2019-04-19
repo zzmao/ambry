@@ -42,14 +42,14 @@ import org.slf4j.LoggerFactory;
  * Helix Based VCR Cluster.
  */
 public class HelixVcrCluster implements VirtualReplicatorCluster {
-  private final static Logger logger = LoggerFactory.getLogger(HelixVcrCluster.class);
+  private static final Logger logger = LoggerFactory.getLogger(HelixVcrCluster.class);
   private final DataNodeId currentDataNode;
   private final String vcrClusterName;
   private final String vcrInstanceName;
   private final HelixManager manager;
   private final HelixAdmin helixAdmin;
   private final Map<String, PartitionId> partitionIdMap;
-  private final Set<PartitionId> assignedPartitionIds = new ConcurrentHashMap<PartitionId, Boolean>().newKeySet();
+  private final Set<PartitionId> assignedPartitionIds = ConcurrentHashMap.newKeySet();
   private final HelixVcrClusterMetrics metrics;
 
   /**
