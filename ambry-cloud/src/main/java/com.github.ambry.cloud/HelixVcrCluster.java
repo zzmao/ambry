@@ -22,6 +22,7 @@ import com.github.ambry.clustermap.VirtualReplicatorClusterListener;
 import com.github.ambry.config.CloudConfig;
 import com.github.ambry.config.ClusterMapConfig;
 import com.github.ambry.utils.Utils;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -52,7 +53,7 @@ public class HelixVcrCluster implements VirtualReplicatorCluster {
   private final Map<String, PartitionId> partitionIdMap;
   private final Set<PartitionId> assignedPartitionIds = ConcurrentHashMap.newKeySet();
   private final HelixVcrClusterMetrics metrics;
-  private final LinkedList<VirtualReplicatorClusterListener> listeners = new LinkedList<>();
+  private final List<VirtualReplicatorClusterListener> listeners = new ArrayList<>();
 
   /**
    * Construct the helix VCR cluster.
