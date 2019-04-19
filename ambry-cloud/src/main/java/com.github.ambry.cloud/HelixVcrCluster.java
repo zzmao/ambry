@@ -18,6 +18,7 @@ import com.github.ambry.clustermap.ClusterMapUtils;
 import com.github.ambry.clustermap.DataNodeId;
 import com.github.ambry.clustermap.PartitionId;
 import com.github.ambry.clustermap.VirtualReplicatorCluster;
+import com.github.ambry.clustermap.VirtualReplicatorClusterListener;
 import com.github.ambry.config.CloudConfig;
 import com.github.ambry.config.ClusterMapConfig;
 import com.github.ambry.utils.Utils;
@@ -51,6 +52,7 @@ public class HelixVcrCluster implements VirtualReplicatorCluster {
   private final Map<String, PartitionId> partitionIdMap;
   private final Set<PartitionId> assignedPartitionIds = ConcurrentHashMap.newKeySet();
   private final HelixVcrClusterMetrics metrics;
+  private final LinkedList<VirtualReplicatorClusterListener> listeners = new LinkedList<>();
 
   /**
    * Construct the helix VCR cluster.
@@ -90,8 +92,12 @@ public class HelixVcrCluster implements VirtualReplicatorCluster {
    * @param partitionIdStr The partitionIdStr notified by Helix.
    */
   public void addPartition(String partitionIdStr) {
-    if (partitionIdMap.containsKey(partitionIdStr)) {
-      assignedPartitionIds.add(partitionIdMap.get(partitionIdStr));
+    PartitionId partitionId = partitionIdMap.get(partitionIdStr);
+    if (partitionId != null) {
+      assignedPartitionIds.add(partitionId);
+      for (VirtualReplicatorClusterListener listener : listeners) {
+        listener.onPartitionAdded(partitionId);
+      }
       logger.info("Added partition {} to current VCR: ", partitionIdStr);
     } else {
       logger.trace("Partition {} not in clusterMap on add.", partitionIdStr);
@@ -105,9 +111,13 @@ public class HelixVcrCluster implements VirtualReplicatorCluster {
    * @param partitionIdStr The partitionIdStr notified by Helix.
    */
   public void removePartition(String partitionIdStr) {
-    if (partitionIdMap.containsKey(partitionIdStr)) {
+    PartitionId partitionId = partitionIdMap.get(partitionIdStr);
+    if (partitionId != null) {
       assignedPartitionIds.remove(partitionIdMap.get(partitionIdStr));
-      logger.info("Removed partition {} from current VCR: ", partitionIdStr);
+      for (VirtualReplicatorClusterListener listener : listeners) {
+        listener.onPartitionRemoved(partitionId);
+      }
+      logger.info("Removed partition {} to current VCR: ", partitionIdStr);
     } else {
       logger.trace("Partition {} not in clusterMap on remove.", partitionIdStr);
       metrics.partitionIdNotInClusterMapOnRemove.inc();
@@ -128,6 +138,11 @@ public class HelixVcrCluster implements VirtualReplicatorCluster {
   @Override
   public List<? extends PartitionId> getAssignedPartitionIds() {
     return new LinkedList<>(assignedPartitionIds);
+  }
+
+  @Override
+  public void addListener(VirtualReplicatorClusterListener listener) {
+    listeners.add(listener);
   }
 
   @Override
