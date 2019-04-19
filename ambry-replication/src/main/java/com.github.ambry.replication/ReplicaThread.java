@@ -67,6 +67,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
@@ -80,11 +81,11 @@ import org.slf4j.LoggerFactory;
  */
 class ReplicaThread implements Runnable {
 
-  private final Map<DataNodeId, List<RemoteReplicaInfo>> replicasToReplicateGroupedByNode;
+  private final ConcurrentHashMap<DataNodeId, Set<RemoteReplicaInfo>> replicasToReplicateGroupedByNode;
   private final Set<PartitionId> replicationDisabledPartitions = new HashSet<>();
   private final Set<PartitionId> unmodifiableReplicationDisabledPartitions =
       Collections.unmodifiableSet(replicationDisabledPartitions);
-  private final Set<PartitionId> allReplicatedPartitions;
+  private final Set<PartitionId> allReplicatedPartitions = ConcurrentHashMap.newKeySet();
   private final CountDownLatch shutdownLatch = new CountDownLatch(1);
   private volatile boolean running;
   private final FindTokenFactory findTokenFactory;
@@ -114,14 +115,13 @@ class ReplicaThread implements Runnable {
 
   private volatile boolean allDisabled = false;
 
-  ReplicaThread(String threadName, Map<DataNodeId, List<RemoteReplicaInfo>> replicasToReplicateGroupedByNode,
-      FindTokenFactory findTokenFactory, ClusterMap clusterMap, AtomicInteger correlationIdGenerator,
-      DataNodeId dataNodeId, ConnectionPool connectionPool, ReplicationConfig replicationConfig,
-      ReplicationMetrics replicationMetrics, NotificationSystem notification, StoreKeyConverter storeKeyConverter,
-      Transformer transformer, MetricRegistry metricRegistry, boolean replicatingOverSsl, String datacenterName,
-      ResponseHandler responseHandler, Time time) {
+  ReplicaThread(String threadName, FindTokenFactory findTokenFactory, ClusterMap clusterMap,
+      AtomicInteger correlationIdGenerator, DataNodeId dataNodeId, ConnectionPool connectionPool,
+      ReplicationConfig replicationConfig, ReplicationMetrics replicationMetrics, NotificationSystem notification,
+      StoreKeyConverter storeKeyConverter, Transformer transformer, MetricRegistry metricRegistry,
+      boolean replicatingOverSsl, String datacenterName, ResponseHandler responseHandler, Time time) {
     this.threadName = threadName;
-    this.replicasToReplicateGroupedByNode = replicasToReplicateGroupedByNode;
+    this.replicasToReplicateGroupedByNode = new ConcurrentHashMap<>();
     this.running = true;
     this.findTokenFactory = findTokenFactory;
     this.clusterMap = clusterMap;
@@ -139,13 +139,13 @@ class ReplicaThread implements Runnable {
     this.replicatingOverSsl = replicatingOverSsl;
     this.datacenterName = datacenterName;
     this.time = time;
-    Set<PartitionId> partitions = new HashSet<>();
-    for (Map.Entry<DataNodeId, List<RemoteReplicaInfo>> entry : replicasToReplicateGroupedByNode.entrySet()) {
-      for (RemoteReplicaInfo info : entry.getValue()) {
-        partitions.add(info.getReplicaId().getPartitionId());
-      }
-    }
-    allReplicatedPartitions = Collections.unmodifiableSet(partitions);
+//    Set<PartitionId> partitions = new HashSet<>();
+//    for (Map.Entry<DataNodeId, List<RemoteReplicaInfo>> entry : replicasToReplicateGroupedByNode.entrySet()) {
+//      for (RemoteReplicaInfo info : entry.getValue()) {
+//        partitions.add(info.getReplicaId().getPartitionId());
+//      }
+//    }
+//    allReplicatedPartitions = Collections.unmodifiableSet(partitions);
     if (replicatingFromRemoteColo) {
       threadThrottleDurationMs = replicationConfig.replicationInterReplicaThreadThrottleSleepDurationMs;
       syncedBackOffCount = replicationMetrics.interColoReplicaSyncedBackoffCount;
@@ -201,16 +201,9 @@ class ReplicaThread implements Runnable {
   @Override
   public void run() {
     try {
-      logger.trace("Starting replica thread on Local node: " + dataNodeId + " Thread name: " + threadName);
-      List<List<RemoteReplicaInfo>> replicasToReplicate = new ArrayList<>(replicasToReplicateGroupedByNode.size());
-      for (Map.Entry<DataNodeId, List<RemoteReplicaInfo>> replicasToReplicateEntry : replicasToReplicateGroupedByNode.entrySet()) {
-        logger.info("Remote node: " + replicasToReplicateEntry.getKey() + " Thread name: " + threadName
-            + " ReplicasToReplicate: " + replicasToReplicateEntry.getValue());
-        replicasToReplicate.add(replicasToReplicateEntry.getValue());
-      }
       logger.info("Begin iteration for thread " + threadName);
       while (running) {
-        replicate(replicasToReplicate);
+        replicate(replicasToReplicateGroupedByNode);
         lock.lock();
         try {
           if (running && allDisabled) {
@@ -229,18 +222,36 @@ class ReplicaThread implements Runnable {
   }
 
   /**
-   * Replicas from the given replicas
-   * @param replicasToReplicate list of {@link RemoteReplicaInfo} by data node
+   * Gets a map where key is {@link DataNodeId} and value is list of {@link RemoteReplicaInfo}.
+   * @return replicasToReplicateGroupedByNode.
    */
-  void replicate(List<List<RemoteReplicaInfo>> replicasToReplicate) {
-    // shuffle the nodes
-    Collections.shuffle(replicasToReplicate);
+  void addRemoteReplicaInfo(DataNodeId dataNodeId, RemoteReplicaInfo remoteReplicaInfo) {
+    System.out.println("add remoteReplicaInfo" + remoteReplicaInfo.getReplicaId() + "to" + this.threadName);
+    replicasToReplicateGroupedByNode.compute(dataNodeId, (key, set) -> {
+      allReplicatedPartitions.add(remoteReplicaInfo.getReplicaId().getPartitionId());
+      if (set == null) {
+        Set<RemoteReplicaInfo> newSet = new HashSet<>();
+        newSet.add(remoteReplicaInfo);
+        return newSet;
+      } else {
+        set.add(remoteReplicaInfo);
+        return set;
+      }
+    });
+  }
+
+  /**
+   * Do replication by given replicas grouped by {@link DataNodeId}
+   * @param replicasToReplicateGroupedByNode lists of {@link RemoteReplicaInfo} grouped by data node
+   */
+  void replicate(Map<DataNodeId, Set<RemoteReplicaInfo>> replicasToReplicateGroupedByNode) {
     boolean allCaughtUp = true;
-    for (List<RemoteReplicaInfo> replicasToReplicatePerNode : replicasToReplicate) {
+    for (Map.Entry<DataNodeId, Set<RemoteReplicaInfo>> entry : replicasToReplicateGroupedByNode.entrySet()) {
       if (!running) {
         break;
       }
-      DataNodeId remoteNode = replicasToReplicatePerNode.get(0).getReplicaId().getDataNodeId();
+      DataNodeId remoteNode = entry.getKey();
+      Set<RemoteReplicaInfo> replicasToReplicatePerNode = entry.getValue();
       logger.trace("Remote node: {} Thread name: {} Remote replicas: {}", remoteNode, threadName,
           replicasToReplicatePerNode);
       Timer.Context context = null;

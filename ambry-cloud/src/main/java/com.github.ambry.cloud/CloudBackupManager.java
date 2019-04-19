@@ -18,6 +18,7 @@ import com.github.ambry.clustermap.ClusterMap;
 import com.github.ambry.clustermap.PartitionId;
 import com.github.ambry.clustermap.ReplicaId;
 import com.github.ambry.clustermap.VirtualReplicatorCluster;
+import com.github.ambry.clustermap.VirtualReplicatorClusterListener;
 import com.github.ambry.config.CloudConfig;
 import com.github.ambry.config.ClusterMapConfig;
 import com.github.ambry.config.ReplicationConfig;
@@ -44,6 +45,10 @@ import java.util.concurrent.ScheduledExecutorService;
  * {@link CloudBackupManager} is used to backup partitions to Cloud. Partitions assignment is handled by Helix.
  */
 public class CloudBackupManager extends ReplicationEngine {
+  private final CloudConfig cloudConfig;
+  private final StoreConfig storeConfig;
+  private final CloudDestination cloudDestination;
+  private final VirtualReplicatorCluster virtualReplicatorCluster;
 
   public CloudBackupManager(CloudConfig cloudConfig, ReplicationConfig replicationConfig,
       ClusterMapConfig clusterMapConfig, StoreConfig storeConfig, StoreKeyFactory storeKeyFactory,
@@ -55,46 +60,71 @@ public class CloudBackupManager extends ReplicationEngine {
     super(replicationConfig, clusterMapConfig, storeKeyFactory, clusterMap, scheduler,
         virtualReplicatorCluster.getCurrentDataNodeId(), Collections.emptyList(), connectionPool, metricRegistry,
         requestNotification, storeKeyConverterFactory, transformerClassName);
-    CloudDestination cloudDestination = cloudDestinationFactory.getCloudDestination();
+    this.cloudConfig = cloudConfig;
+    this.storeConfig = storeConfig;
+    this.virtualReplicatorCluster = virtualReplicatorCluster;
+    this.cloudDestination = cloudDestinationFactory.getCloudDestination();
     List<? extends PartitionId> partitionIds = virtualReplicatorCluster.getAssignedPartitionIds();
     for (PartitionId partitionId : partitionIds) {
-      ReplicaId cloudReplica =
-          new CloudReplica(cloudConfig, partitionId, virtualReplicatorCluster.getCurrentDataNodeId());
-      Store cloudStore = new CloudBlobStore(partitionId, cloudConfig, cloudDestination);
-      try {
-        cloudStore.start();
-      } catch (StoreException e) {
-        throw new ReplicationException("Can't start CloudStore " + cloudStore, e);
-      }
-      List<? extends ReplicaId> peerReplicas = cloudReplica.getPeerReplicaIds();
-      if (peerReplicas != null) {
-        List<RemoteReplicaInfo> remoteReplicas = new ArrayList<>();
-        for (ReplicaId peerReplica : peerReplicas) {
-          if (!peerReplica.getDataNodeId().getDatacenterName().equals(dataNodeId.getDatacenterName())) {
-            continue;
-          }
-          // We need to ensure that a replica token gets persisted only after the corresponding data in the
-          // store gets flushed to cloud. We use the store flush interval multiplied by a constant factor
-          // to determine the token flush interval
-          RemoteReplicaInfo remoteReplicaInfo =
-              new RemoteReplicaInfo(peerReplica, cloudReplica, cloudStore, factory.getNewFindToken(),
-                  storeConfig.storeDataFlushIntervalSeconds * SystemTime.MsPerSec * Replication_Delay_Multiplier,
-                  SystemTime.getInstance(), peerReplica.getDataNodeId().getPortToConnectTo());
-          replicationMetrics.addRemoteReplicaToLagMetrics(remoteReplicaInfo);
-          replicationMetrics.createRemoteReplicaErrorMetrics(remoteReplicaInfo);
-          remoteReplicas.add(remoteReplicaInfo);
-          updateReplicasToReplicate(peerReplica.getDataNodeId().getDatacenterName(), remoteReplicaInfo);
-        }
-        PartitionInfo partitionInfo = new PartitionInfo(remoteReplicas, partitionId, cloudStore, cloudReplica);
-        partitionsToReplicate.put(partitionId, partitionInfo);
-        partitionGroupedByMountPath.computeIfAbsent(cloudReplica.getMountPath(), key -> new ArrayList<>())
-            .add(partitionInfo);
-      } else {
-        throw new ReplicationException(
-            "Failed to back up partition " + partitionId + " because no peer replicas found.");
-      }
+      addPartition(partitionId);
     }
+
+    virtualReplicatorCluster.addListener(new VirtualReplicatorClusterListener() {
+      @Override
+      public void onPartitionAdded(PartitionId partitionId) {
+        try {
+          List<RemoteReplicaInfo> remoteReplicaInfos = addPartition(partitionId);
+          addRemoteReplicaInfo(remoteReplicaInfos);
+        } catch (ReplicationException e) {
+          System.out.println("Exception on add: " + e);
+        }
+      }
+
+      @Override
+      public void onPartitionRemoved(PartitionId partitionId) {
+
+      }
+    });
+
     replicationMetrics.populatePerColoMetrics(numberOfReplicaThreads.keySet());
     persistor = new DiskTokenPersistor(replicaTokenFileName, partitionGroupedByMountPath, replicationMetrics);
+  }
+
+  synchronized private List<RemoteReplicaInfo> addPartition(PartitionId partitionId) throws ReplicationException {
+    ReplicaId cloudReplica =
+        new CloudReplica(cloudConfig, partitionId, virtualReplicatorCluster.getCurrentDataNodeId());
+    Store cloudStore = new CloudBlobStore(partitionId, cloudConfig, cloudDestination);
+    try {
+      cloudStore.start();
+    } catch (StoreException e) {
+      throw new ReplicationException("Can't start CloudStore " + cloudStore, e);
+    }
+    List<? extends ReplicaId> peerReplicas = cloudReplica.getPeerReplicaIds();
+    List<RemoteReplicaInfo> remoteReplicas = new ArrayList<>();
+    if (peerReplicas != null) {
+      for (ReplicaId peerReplica : peerReplicas) {
+        if (!peerReplica.getDataNodeId().getDatacenterName().equals(dataNodeId.getDatacenterName())) {
+          continue;
+        }
+        // We need to ensure that a replica token gets persisted only after the corresponding data in the
+        // store gets flushed to cloud. We use the store flush interval multiplied by a constant factor
+        // to determine the token flush interval
+        RemoteReplicaInfo remoteReplicaInfo =
+            new RemoteReplicaInfo(peerReplica, cloudReplica, cloudStore, factory.getNewFindToken(),
+                storeConfig.storeDataFlushIntervalSeconds * SystemTime.MsPerSec * Replication_Delay_Multiplier,
+                SystemTime.getInstance(), peerReplica.getDataNodeId().getPortToConnectTo());
+        replicationMetrics.addRemoteReplicaToLagMetrics(remoteReplicaInfo);
+        replicationMetrics.createRemoteReplicaErrorMetrics(remoteReplicaInfo);
+        remoteReplicas.add(remoteReplicaInfo);
+        updateReplicasToReplicate(peerReplica.getDataNodeId().getDatacenterName(), remoteReplicaInfo);
+      }
+      PartitionInfo partitionInfo = new PartitionInfo(remoteReplicas, partitionId, cloudStore, cloudReplica);
+      partitionsToReplicate.put(partitionId, partitionInfo);
+      partitionGroupedByMountPath.computeIfAbsent(cloudReplica.getMountPath(), key -> new ArrayList<>())
+          .add(partitionInfo);
+    } else {
+      throw new ReplicationException("Failed to back up partition " + partitionId + " because no peer replicas found.");
+    }
+    return remoteReplicas;
   }
 }
