@@ -10,6 +10,13 @@
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *
+ * The code was originally created by Apache Helix under Apache License 2.0.
+ * https://github.com/apache/helix/blob/master/helix-core/src/test/java/org/apache/helix/integration/manager/MockParticipantManager.java
+ * Code Changes in this copy:
+ * 1. Renamed MockParticipantManager to HelixControllerManager.
+ * 2. Renamed LOG to logger.
+ * 3. Removed '_' from class members.
  */
 package com.github.ambry.utils;
 
@@ -21,13 +28,13 @@ import org.slf4j.LoggerFactory;
 
 
 public class HelixControllerManager extends ZKHelixManager implements Runnable {
-  private static Logger LOG = LoggerFactory.getLogger(HelixControllerManager.class);
+  private static Logger logger = LoggerFactory.getLogger(HelixControllerManager.class);
 
-  private final CountDownLatch _startCountDown = new CountDownLatch(1);
-  private final CountDownLatch _stopCountDown = new CountDownLatch(1);
-  private final CountDownLatch _waitStopFinishCountDown = new CountDownLatch(1);
+  private final CountDownLatch startCountDown = new CountDownLatch(1);
+  private final CountDownLatch stopCountDown = new CountDownLatch(1);
+  private final CountDownLatch waitStopFinishCountDown = new CountDownLatch(1);
 
-  private boolean _started = false;
+  private boolean started = false;
 
   public HelixControllerManager(String zkAddr, String clusterName) {
     this(zkAddr, clusterName, "controller");
@@ -38,28 +45,28 @@ public class HelixControllerManager extends ZKHelixManager implements Runnable {
   }
 
   public void syncStop() {
-    _stopCountDown.countDown();
+    stopCountDown.countDown();
     try {
-      _waitStopFinishCountDown.await();
-      _started = false;
+      waitStopFinishCountDown.await();
+      started = false;
     } catch (InterruptedException e) {
-      LOG.error("Interrupted waiting for finish", e);
+      logger.error("Interrupted waiting for finish", e);
     }
   }
 
   // This should not be called more than once because HelixManager.connect() should not be called more than once.
   public void syncStart() {
-    if (_started) {
+    if (started) {
       throw new RuntimeException("Helix Controller already started. Do not call syncStart() more than once.");
     } else {
-      _started = true;
+      started = true;
     }
 
     new Thread(this).start();
     try {
-      _startCountDown.await();
+      startCountDown.await();
     } catch (InterruptedException e) {
-      LOG.error("Interrupted waiting for start", e);
+      logger.error("Interrupted waiting for start", e);
     }
   }
 
@@ -67,14 +74,14 @@ public class HelixControllerManager extends ZKHelixManager implements Runnable {
   public void run() {
     try {
       connect();
-      _startCountDown.countDown();
-      _stopCountDown.await();
+      startCountDown.countDown();
+      stopCountDown.await();
     } catch (Exception e) {
-      LOG.error("exception running controller-manager", e);
+      logger.error("exception running controller-manager", e);
     } finally {
-      _startCountDown.countDown();
+      startCountDown.countDown();
       disconnect();
-      _waitStopFinishCountDown.countDown();
+      waitStopFinishCountDown.countDown();
     }
   }
 }
