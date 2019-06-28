@@ -126,9 +126,10 @@ class DumpDataHelper {
             break;
           default:
             // TODO (TTL update): handle TTL update
-            throw new IllegalStateException("Unrecognized update record type: " + updateRecord.getType());
+//            throw new IllegalStateException("Unrecognized update record type: " + updateRecord.getType());
         }
       }
+//      System.out.println(blobProperty);
       return new LogBlobRecordInfo(messageheader, blobId, encryptionKey, blobProperty, usermetadata, blobDataOutput,
           deleteMsg, isDeleted, isExpired, expiresAtMs, totalRecordSize);
     } finally

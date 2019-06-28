@@ -27,7 +27,9 @@ import com.github.ambry.utils.Throttler;
 import com.github.ambry.utils.Utils;
 import java.io.EOFException;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -89,6 +91,7 @@ public class DumpLogTool {
   }
 
   public static void main(String args[]) throws Exception {
+//    args = new String[]{"--propsFile", "/Users/zemao/prop"};
     VerifiableProperties verifiableProperties = ToolUtils.getVerifiableProperties(args);
     MetricRegistry registry = new MetricRegistry();
     StoreToolsMetrics metrics = new StoreToolsMetrics(registry);
@@ -177,13 +180,14 @@ public class DumpLogTool {
     }
     logger.info("Starting dumping from offset " + currentOffset);
     while (currentOffset < endOffset) {
+//      System.out.println("working on offset: " + currentOffset);
       try {
         DumpDataHelper.LogBlobRecordInfo logBlobRecordInfo =
             DumpDataHelper.readSingleRecordFromLog(randomAccessFile, currentOffset, clusterMap, currentTimeInMs,
                 metrics);
-        if (throttler != null) {
-          throttler.maybeThrottle(logBlobRecordInfo.totalRecordSize);
-        }
+//        if (throttler != null) {
+//          throttler.maybeThrottle(logBlobRecordInfo.totalRecordSize);
+//        }
         if (lastBlobFailed && !silent) {
           logger.info("Successful record found at " + currentOffset + " after some failures ");
         }
@@ -191,6 +195,16 @@ public class DumpLogTool {
         if (!logBlobRecordInfo.isDeleted) {
           if (blobs != null) {
             if (blobs.contains(logBlobRecordInfo.blobId.getID())) {
+              System.out.println("blob founded");
+              randomAccessFile.seek(currentOffset);
+              byte[] allBlob = new byte[logBlobRecordInfo.totalRecordSize];
+              randomAccessFile.read(allBlob, 0, allBlob.length);
+
+              OutputStream os = new FileOutputStream(new File("/tmp/" + logBlobRecordInfo.blobId.toString()));
+              os.write(allBlob);
+              System.out.println("blob write to /tmp/" + logBlobRecordInfo.blobId.toString());
+              os.close();
+
               logger.info("{}\n{}\n{}\n{}\n{}\n{}", logBlobRecordInfo.messageHeader, logBlobRecordInfo.blobId,
                   logBlobRecordInfo.blobEncryptionKey, logBlobRecordInfo.blobProperty, logBlobRecordInfo.userMetadata,
                   logBlobRecordInfo.blobDataOutput);

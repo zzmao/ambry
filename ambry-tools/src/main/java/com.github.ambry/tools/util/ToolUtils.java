@@ -151,6 +151,8 @@ public final class ToolUtils {
     } else {
       Properties properties = Utils.loadProps(propsFilePath);
       addClusterMapProperties(properties);
+      System.out.println("working on file " + args[2]);
+      properties.setProperty("file.to.read", args[2]);
       return new VerifiableProperties(properties);
     }
   }
