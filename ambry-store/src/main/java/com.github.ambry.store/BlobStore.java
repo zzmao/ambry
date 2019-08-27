@@ -303,8 +303,7 @@ class BlobStore implements Store {
       throws StoreException {
     int existingIdenticalEntries = 0;
     for (MessageInfo info : messageSetToWrite.getMessageSetInfo()) {
-      if (index.findKey(info.getStoreKey(), fileSpan,
-          EnumSet.of(PersistentIndex.IndexEntryType.PUT, PersistentIndex.IndexEntryType.DELETE)) != null) {
+      if (index.findKeyOfPutOrDelete(info.getStoreKey(), fileSpan) != null) {
         if (index.wasRecentlySeen(info)) {
           existingIdenticalEntries++;
           metrics.identicalPutAttemptCount.inc();
@@ -471,8 +470,7 @@ class BlobStore implements Store {
         if (!currentIndexEndOffset.equals(indexEndOffsetBeforeCheck)) {
           FileSpan fileSpan = new FileSpan(indexEndOffsetBeforeCheck, currentIndexEndOffset);
           for (MessageInfo info : infoList) {
-            IndexValue value = index.findKey(info.getStoreKey(), fileSpan,
-                EnumSet.of(PersistentIndex.IndexEntryType.PUT, PersistentIndex.IndexEntryType.DELETE));
+            IndexValue value = index.findKeyOfPutOrDelete(info.getStoreKey(), fileSpan);
             if (value != null && value.isFlagSet(IndexValue.Flags.Delete_Index)) {
               throw new StoreException(
                   "Cannot delete id " + info.getStoreKey() + " since it is already deleted in the index.",
@@ -562,8 +560,7 @@ class BlobStore implements Store {
         if (!currentIndexEndOffset.equals(indexEndOffsetBeforeCheck)) {
           FileSpan fileSpan = new FileSpan(indexEndOffsetBeforeCheck, currentIndexEndOffset);
           for (MessageInfo info : infoList) {
-            IndexValue value =
-                index.findKey(info.getStoreKey(), fileSpan, EnumSet.allOf(PersistentIndex.IndexEntryType.class));
+            IndexValue value = index.findKeyOfLatest(info.getStoreKey(), fileSpan);
             if (value != null) {
               if (value.isFlagSet(IndexValue.Flags.Delete_Index)) {
                 throw new StoreException(
@@ -751,9 +748,9 @@ class BlobStore implements Store {
    */
   DiskSpaceRequirements getDiskSpaceRequirements() throws StoreException {
     checkStarted();
-    DiskSpaceRequirements requirements = log.isLogSegmented() ? new DiskSpaceRequirements(
-        replicaId.getPartitionId().toPathString(), log.getSegmentCapacity(),
-        log.getRemainingUnallocatedSegments(), compactor.getSwapSegmentsInUse()) : null;
+    DiskSpaceRequirements requirements =
+        log.isLogSegmented() ? new DiskSpaceRequirements(replicaId.getPartitionId().toPathString(),
+            log.getSegmentCapacity(), log.getRemainingUnallocatedSegments(), compactor.getSwapSegmentsInUse()) : null;
     logger.info("Store {} has disk space requirements: {}", storeId, requirements);
     return requirements;
   }

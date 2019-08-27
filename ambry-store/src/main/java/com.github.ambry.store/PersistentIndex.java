@@ -517,16 +517,48 @@ class PersistentIndex {
 
   /**
    * Finds a key in the index and returns the blob index value associated with it. If not found,
-   * returns null
-   * <br>
-   * This method only returns PUT or DELETE index entries. It does not return TTL_UPDATE entries but accounts for
-   * TTL updates by updating the flag and expiry time (if applicable).
+   * returns null.
    * @param key  The key to find in the index
    * @return The blob index value associated with the key. Null if the key is not found.
    * @throws StoreException
    */
   IndexValue findKey(StoreKey key) throws StoreException {
-    return findKey(key, null, EnumSet.of(IndexEntryType.PUT, IndexEntryType.DELETE));
+    return findKeyOfPutOrDelete(key, null);
+  }
+
+  /**
+   * This method only returns PUT or DELETE index entries. It does not return TTL_UPDATE entries but accounts for
+   * TTL updates by updating the flag and expiry time (if applicable).
+   * @param key  The key to find in the index
+   * @param fileSpan The {@link FileSpan} to search for
+   * @return The blob index value associated with the key. Null if the key is not found.
+   * @throws StoreException
+   */
+  IndexValue findKeyOfPutOrDelete(StoreKey key, FileSpan fileSpan) throws StoreException {
+    return findKey(key, fileSpan, EnumSet.of(IndexEntryType.PUT, IndexEntryType.DELETE));
+  }
+
+  /**
+   * Found the latest index entry of the given key.
+   * @param key  The key to find in the index
+   * @param fileSpan The {@link FileSpan} to search for
+   * @return The blob index value associated with the key. Null if the key is not found.
+   * @throws StoreException
+   */
+  IndexValue findKeyOfLatest(StoreKey key, FileSpan fileSpan) throws StoreException {
+    return findKey(key, fileSpan, EnumSet.allOf(IndexEntryType.class));
+  }
+
+  IndexValue findKeyOfPutWithLatestInfo(StoreKey key, FileSpan fileSpan) throws StoreException {
+    return findKey(key, fileSpan, EnumSet.of(IndexEntryType.PUT));
+  }
+
+  IndexValue findKeyOfUpdateTypes(StoreKey key, FileSpan fileSpan) throws StoreException {
+    return findKey(key, fileSpan, EnumSet.of(IndexEntryType.DELETE, IndexEntryType.TTL_UPDATE));
+  }
+
+  IndexValue findKeyOfDelete(StoreKey key, FileSpan fileSpan) throws StoreException {
+    return findKey(key, fileSpan, EnumSet.of(IndexEntryType.DELETE));
   }
 
   /**
@@ -1300,8 +1332,7 @@ class PersistentIndex {
       MessageInfo messageInfo = messageEntriesIterator.next();
       if (!messageInfo.isDeleted()) {
         // ok to use most recent ref
-        IndexValue indexValue =
-            findKey(messageInfo.getStoreKey(), null, EnumSet.of(IndexEntryType.TTL_UPDATE, IndexEntryType.DELETE));
+        IndexValue indexValue = findKeyOfUpdateTypes(messageInfo.getStoreKey(), null);
         if (indexValue != null) {
           messageInfo = new MessageInfo(messageInfo.getStoreKey(), messageInfo.getSize(),
               indexValue.isFlagSet(IndexValue.Flags.Delete_Index),

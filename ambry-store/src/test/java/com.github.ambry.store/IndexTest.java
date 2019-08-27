@@ -2721,8 +2721,7 @@ public class IndexTest {
    */
   private void verifyIndexValues(List<IndexEntry> indexEntries) throws StoreException {
     for (IndexEntry entry : indexEntries) {
-      IndexValue value = state.index.findKey(entry.getKey(), null,
-          EnumSet.of(PersistentIndex.IndexEntryType.PUT, PersistentIndex.IndexEntryType.DELETE));
+      IndexValue value = state.index.findKeyOfPutOrDelete(entry.getKey(), null);
       IndexValue expectedValue = entry.getValue();
       assertEquals("Offset mismatch for " + entry.getKey(), expectedValue.getOffset(), value.getOffset());
       assertEquals("Size mismatch for " + entry.getKey(), expectedValue.getSize(), value.getSize());

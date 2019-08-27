@@ -610,7 +610,7 @@ class BlobStoreStats implements StoreStats, Closeable {
   private boolean isTtlUpdateEntryValid(StoreKey key, IndexValue ttlUpdateValue, long referenceTimeInMs,
       Map<StoreKey, Long> deletedKeys) throws StoreException {
     FileSpan searchSpan = new FileSpan(index.getStartOffset(), ttlUpdateValue.getOffset());
-    IndexValue putValue = index.findKey(key, searchSpan, EnumSet.of(PersistentIndex.IndexEntryType.PUT));
+    IndexValue putValue = index.findKeyOfPutWithLatestInfo(key, searchSpan);
     boolean valid = true;
     if (putValue == null) {
       // no put value so not valid
@@ -1047,8 +1047,7 @@ class BlobStoreStats implements StoreStats, Closeable {
                 FileSpan searchSpan = new FileSpan(index.getStartOffset(), indexSegment.getStartOffset());
                 originalPut = seenPuts.get(entry.getKey());
                 if (originalPut == null) {
-                  originalPut =
-                      index.findKey(entry.getKey(), searchSpan, EnumSet.of(PersistentIndex.IndexEntryType.PUT));
+                  originalPut = index.findKeyOfPutWithLatestInfo(entry.getKey(), searchSpan);
                 }
               }
               if (originalPut == null) {

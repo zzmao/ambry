@@ -768,8 +768,8 @@ class BlobStoreCompactor {
    */
   private IndexValue getPutValueFromSrc(StoreKey key, IndexValue updateValue, IndexSegment indexSegmentOfUpdateValue)
       throws StoreException {
-    IndexValue putValue = srcIndex.findKey(key, new FileSpan(srcIndex.getStartOffset(), updateValue.getOffset()),
-        EnumSet.of(PersistentIndex.IndexEntryType.PUT));
+    IndexValue putValue =
+        srcIndex.findKeyOfPutWithLatestInfo(key, new FileSpan(srcIndex.getStartOffset(), updateValue.getOffset()));
     // in a non multi valued segment, if putValue is not found directly from the index, check if the PUT and DELETE
     // are the same segment so that the PUT entry can be constructed from the DELETE entry
     if (putValue == null && updateValue.isFlagSet(IndexValue.Flags.Delete_Index)) {
@@ -817,14 +817,14 @@ class BlobStoreCompactor {
     //  A TTL update entry is "valid" if the corresponding PUT is still alive
     // The PUT entry, if it exists, must be "before" this TTL update entry.
     FileSpan srcSearchSpan = new FileSpan(srcIndex.getStartOffset(), indexSegmentStartOffset);
-    IndexValue srcValue = srcIndex.findKey(key, srcSearchSpan, EnumSet.of(PersistentIndex.IndexEntryType.PUT));
+    IndexValue srcValue = srcIndex.findKeyOfPutWithLatestInfo(key, srcSearchSpan);
     if (srcValue == null) {
       // PUT is not in the source - therefore can't be in target. This TTL update can be cleaned up
       logger.trace("TTL update of {} in segment with start offset {} in {} is not valid the corresponding PUT entry "
           + "does not exist anymore", key, indexSegmentStartOffset, storeId);
     } else {
       // exists in source - now we need to check if it exists in the target
-      IndexValue tgtValue = tgtIndex.findKey(key, null, EnumSet.of(PersistentIndex.IndexEntryType.PUT));
+      IndexValue tgtValue = tgtIndex.findKeyOfPutWithLatestInfo(key, null);
       if (tgtValue == null && isOffsetUnderCompaction(srcValue.getOffset())) {
         // exists in src but not in tgt. This can happen either because
         // 1. The FileSpan to which srcValue belongs is not under compaction (so there is no reason for tgt to have it)
@@ -895,7 +895,7 @@ class BlobStoreCompactor {
   private boolean hasDeleteEntryInSpan(StoreKey key, Offset searchStartOffset, Offset searchEndOffset)
       throws StoreException {
     FileSpan deleteSearchSpan = new FileSpan(searchStartOffset, searchEndOffset);
-    return srcIndex.findKey(key, deleteSearchSpan, EnumSet.of(PersistentIndex.IndexEntryType.DELETE)) != null;
+    return srcIndex.findKeyOfDelete(key, deleteSearchSpan) != null;
   }
 
   /**
@@ -909,7 +909,7 @@ class BlobStoreCompactor {
    */
   private boolean alreadyExists(PersistentIndex idx, FileSpan searchSpan, StoreKey key, IndexValue srcValue)
       throws StoreException {
-    IndexValue value = idx.findKey(key, searchSpan, EnumSet.allOf(PersistentIndex.IndexEntryType.class));
+    IndexValue value = idx.findKeyOfLatest(key, searchSpan);
     boolean exists = false;
     if (value != null) {
       if (value.isFlagSet(IndexValue.Flags.Delete_Index)) {
