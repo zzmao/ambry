@@ -903,11 +903,11 @@ class BlobStoreCompactor {
    * @param idx the {@link PersistentIndex} to search in
    * @param searchSpan the {@link FileSpan} to search
    * @param key the {@link StoreKey} of the record.
-   * @param srcValue the {@link IndexValue} whose existence needs to be checked.
+   * @param copyCandidateValue the {@link IndexValue} whose existence needs to be checked.
    * @return {@code true} if the record already exists in {@code idx}, {@code false} otherwise.
    * @throws StoreException if there is any problem with using the index.
    */
-  private boolean alreadyExists(PersistentIndex idx, FileSpan searchSpan, StoreKey key, IndexValue srcValue)
+  private boolean alreadyExists(PersistentIndex idx, FileSpan searchSpan, StoreKey key, IndexValue copyCandidateValue)
       throws StoreException {
     IndexValue value = idx.findKeyOfLatest(key, searchSpan);
     boolean exists = false;
@@ -916,10 +916,10 @@ class BlobStoreCompactor {
         exists = true;
       } else if (value.isFlagSet(IndexValue.Flags.Ttl_Update_Index)) {
         // if srcValue is not a delete, it is a duplicate.
-        exists = !srcValue.isFlagSet(IndexValue.Flags.Delete_Index);
+        exists = !copyCandidateValue.isFlagSet(IndexValue.Flags.Delete_Index);
       } else {
         // value is a PUT without a TTL update or a DELETE
-        exists = !srcValue.isFlagSet(IndexValue.Flags.Delete_Index) && !srcValue.isFlagSet(
+        exists = !copyCandidateValue.isFlagSet(IndexValue.Flags.Delete_Index) && !copyCandidateValue.isFlagSet(
             IndexValue.Flags.Ttl_Update_Index);
       }
     }

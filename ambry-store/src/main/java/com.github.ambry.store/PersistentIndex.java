@@ -554,11 +554,16 @@ class PersistentIndex {
   }
 
   IndexValue findKeyOfUpdateTypes(StoreKey key, FileSpan fileSpan) throws StoreException {
+    // This needs to be changed if UNDELETE is introduced.
     return findKey(key, fileSpan, EnumSet.of(IndexEntryType.DELETE, IndexEntryType.TTL_UPDATE));
   }
 
   IndexValue findKeyOfDelete(StoreKey key, FileSpan fileSpan) throws StoreException {
-    return findKey(key, fileSpan, EnumSet.of(IndexEntryType.DELETE));
+    IndexValue indexValue = findKeyOfLatest(key, fileSpan);
+    if (indexValue != null && indexValue.isFlagSet(IndexValue.Flags.Delete_Index)) {
+      return indexValue;
+    }
+    return null;
   }
 
   /**
@@ -625,6 +630,7 @@ class PersistentIndex {
               break;
             } else if (types.contains(IndexEntryType.TTL_UPDATE) && !value.isFlagSet(IndexValue.Flags.Delete_Index)
                 && value.isFlagSet(IndexValue.Flags.Ttl_Update_Index)) {
+              // A delete index may also have ttlUpdate flag: when delete is added, it adds previous same key index flags.
               retCandidate = value;
               break;
             } else if (types.contains(IndexEntryType.PUT) && !value.isFlagSet(IndexValue.Flags.Delete_Index)

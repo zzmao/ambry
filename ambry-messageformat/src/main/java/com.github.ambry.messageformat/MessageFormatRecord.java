@@ -591,6 +591,15 @@ public class MessageFormatRecord {
    * |         |              |                 |               |           |               |           |           |
    *  - - - - - - - - - - - - - - - - - - -- - -- - - - - - - - - - - - - -  - - - - - - - - - - - - - - - - - - - -
    *
+   *  - - - - - - - - - - - - - - - - - - -- - -- - - - - - - - - - - - - -  - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   * |         |              |                 |               |           |               |           |              |         |
+   * | version | payload size | Blob Encryption | Blob Property | Update    | User Metadata | Blob      | UpdateVersion| Crc     |
+   * |(2 bytes)|   (8 bytes)  | Key Relative    | Relative      | Relative  | Relative      | Relative  | (2 bytes)    |         |
+   * |         |              | Offset          | Offset        | Offset    | Offset        | Offset    |              |         |
+   * |         |              | (4 bytes)       | (4 bytes)     | (4 bytes) | (4 bytes)     | (4 bytes) |              |         |
+   * |         |              |                 |               |           |               |           |              |         |
+   *  - - - - - - - - - - - - - - - - - - -- - -- - - - - - - - - - - - - -  - - - - - - - - - - - - - - - - - - - - - - - - - - - - ---
+   *
    *  version         - The version of the message header
    *
    *  payload size    - The size of the message payload.
