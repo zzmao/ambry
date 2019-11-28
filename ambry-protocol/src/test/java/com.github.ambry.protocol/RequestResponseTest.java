@@ -283,7 +283,7 @@ public class RequestResponseTest {
     doTest(InvalidVersionPutRequest.Put_Request_Invalid_version, clusterMap, correlationId, clientId, blobId,
         blobProperties, userMetadata, BlobType.DataBlob, blob, blobSize, blobKey, null);
 
-    // Put Request with size in blob properties different from the data size and blob type: Data blob.
+    // Put NetworkRequest with size in blob properties different from the data size and blob type: Data blob.
     blobProperties =
         new BlobProperties(blobSize * 10, "serviceID", "memberId", "contentType", false, Utils.Infinite_Time,
             Utils.getRandomShort(TestUtils.RANDOM), Utils.getRandomShort(TestUtils.RANDOM),
@@ -291,7 +291,7 @@ public class RequestResponseTest {
     testPutRequest(clusterMap, correlationId, clientId, blobId, blobProperties, userMetadata, BlobType.DataBlob, blob,
         blobSize, blobKey);
 
-    // Put Request with size in blob properties different from the data size and blob type: Metadata blob.
+    // Put NetworkRequest with size in blob properties different from the data size and blob type: Metadata blob.
     blobProperties =
         new BlobProperties(blobSize * 10, "serviceID", "memberId", "contentType", false, Utils.Infinite_Time,
             Utils.getRandomShort(TestUtils.RANDOM), Utils.getRandomShort(TestUtils.RANDOM),
@@ -299,7 +299,7 @@ public class RequestResponseTest {
     testPutRequest(clusterMap, correlationId, clientId, blobId, blobProperties, userMetadata, BlobType.MetadataBlob,
         blob, blobSize, blobKey);
 
-    // Put Request with empty user metadata.
+    // Put NetworkRequest with empty user metadata.
     byte[] emptyUserMetadata = new byte[0];
     blobProperties = new BlobProperties(blobSize, "serviceID", "memberId", "contentType", false, Utils.Infinite_Time,
         Utils.getRandomShort(TestUtils.RANDOM), Utils.getRandomShort(TestUtils.RANDOM), TestUtils.RANDOM.nextBoolean(),
@@ -307,7 +307,7 @@ public class RequestResponseTest {
     testPutRequest(clusterMap, correlationId, clientId, blobId, blobProperties, emptyUserMetadata, BlobType.DataBlob,
         blob, blobSize, blobKey);
 
-    // Response test
+    // NetworkResponse test
     PutResponse response = new PutResponse(1234, clientId, ServerErrorCode.No_Error);
     DataInputStream responseStream = serAndPrepForRead(response, -1, false);
     PutResponse deserializedPutResponse = PutResponse.readFrom(responseStream);
@@ -561,21 +561,21 @@ public class RequestResponseTest {
   @Test
   public void getCompatibleResponseVersionTest() {
     Assert.assertEquals(
-        "Request version Replica_Metadata_Request_Version_V1 should be compatible with REPLICA_METADATA_RESPONSE_VERSION_V_5",
+        "NetworkRequest version Replica_Metadata_Request_Version_V1 should be compatible with REPLICA_METADATA_RESPONSE_VERSION_V_5",
         ReplicaMetadataResponse.getCompatibleResponseVersion(
             ReplicaMetadataRequest.Replica_Metadata_Request_Version_V1),
         ReplicaMetadataResponse.REPLICA_METADATA_RESPONSE_VERSION_V_5);
     Assert.assertEquals(
-        "Request version Replica_Metadata_Request_Version_V6 should be compatible with REPLICA_METADATA_RESPONSE_VERSION_V_6",
+        "NetworkRequest version Replica_Metadata_Request_Version_V6 should be compatible with REPLICA_METADATA_RESPONSE_VERSION_V_6",
         ReplicaMetadataResponse.getCompatibleResponseVersion(
             ReplicaMetadataRequest.Replica_Metadata_Request_Version_V2),
         ReplicaMetadataResponse.REPLICA_METADATA_RESPONSE_VERSION_V_6);
     Assert.assertFalse(
-        "Request version Replica_Metadata_Request_Version_V1 should not be compatible with REPLICA_METADATA_RESPONSE_VERSION_V_6",
+        "NetworkRequest version Replica_Metadata_Request_Version_V1 should not be compatible with REPLICA_METADATA_RESPONSE_VERSION_V_6",
         ReplicaMetadataResponse.getCompatibleResponseVersion(ReplicaMetadataRequest.Replica_Metadata_Request_Version_V1)
             == ReplicaMetadataResponse.REPLICA_METADATA_RESPONSE_VERSION_V_6);
     Assert.assertFalse(
-        "Request version Replica_Metadata_Request_Version_V1 should not be compatible with REPLICA_METADATA_RESPONSE_VERSION_V_6",
+        "NetworkRequest version Replica_Metadata_Request_Version_V1 should not be compatible with REPLICA_METADATA_RESPONSE_VERSION_V_6",
         ReplicaMetadataResponse.getCompatibleResponseVersion(ReplicaMetadataRequest.Replica_Metadata_Request_Version_V2)
             == ReplicaMetadataResponse.REPLICA_METADATA_RESPONSE_VERSION_V_5);
   }
@@ -715,7 +715,7 @@ public class RequestResponseTest {
           new TtlUpdateRequest(correlationId, "client", id1, expiresAtMs, opTimeMs, version);
       DataInputStream requestStream = serAndPrepForRead(ttlUpdateRequest, -1, true);
       TtlUpdateRequest deserializedTtlUpdateRequest = TtlUpdateRequest.readFrom(requestStream, clusterMap);
-      Assert.assertEquals("Request type mismatch", RequestOrResponseType.TtlUpdateRequest,
+      Assert.assertEquals("NetworkRequest type mismatch", RequestOrResponseType.TtlUpdateRequest,
           deserializedTtlUpdateRequest.getRequestType());
       Assert.assertEquals("Correlation ID mismatch", correlationId, deserializedTtlUpdateRequest.getCorrelationId());
       Assert.assertEquals("Client ID mismatch", "client", deserializedTtlUpdateRequest.getClientId());
@@ -728,7 +728,7 @@ public class RequestResponseTest {
       TtlUpdateResponse response = new TtlUpdateResponse(correlationId, "client", ServerErrorCode.No_Error);
       requestStream = serAndPrepForRead(response, -1, false);
       TtlUpdateResponse deserializedTtlUpdateResponse = TtlUpdateResponse.readFrom(requestStream);
-      Assert.assertEquals("Response type mismatch", RequestOrResponseType.TtlUpdateResponse,
+      Assert.assertEquals("NetworkResponse type mismatch", RequestOrResponseType.TtlUpdateResponse,
           deserializedTtlUpdateResponse.getRequestType());
       Assert.assertEquals("Correlation ID mismatch", correlationId, deserializedTtlUpdateResponse.getCorrelationId());
       Assert.assertEquals("Client ID mismatch", "client", deserializedTtlUpdateResponse.getClientId());

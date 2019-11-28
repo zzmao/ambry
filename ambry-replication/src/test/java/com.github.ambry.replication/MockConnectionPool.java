@@ -187,7 +187,7 @@ public class MockConnectionPool implements ConnectionPool {
               index++;
             }
             if (infoFound != null) {
-              // If MsgInfo says it is deleted, get the original Put Message's MessageInfo as that is what Get Request
+              // If MsgInfo says it is deleted, get the original Put Message's MessageInfo as that is what Get NetworkRequest
               // looks for. Just set the deleted flag to true for the constructed MessageInfo from Put.
               if (infoFound.isDeleted()) {
                 MessageInfo putMsgInfo = getMessageInfo(infoFound.getStoreKey(), messageInfoList, false, false);

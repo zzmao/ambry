@@ -2510,7 +2510,7 @@ class FrontendTestResponseHandler implements RestResponseHandler {
       restResponseChannel.onResponseComplete(exception);
       responseSubmitted.countDown();
     } else {
-      throw new RestServiceException("Response handler inactive", RestServiceErrorCode.RequestResponseQueuingFailure);
+      throw new RestServiceException("NetworkResponse handler inactive", RestServiceErrorCode.RequestResponseQueuingFailure);
     }
   }
 

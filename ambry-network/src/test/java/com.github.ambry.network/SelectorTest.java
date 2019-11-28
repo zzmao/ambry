@@ -100,7 +100,7 @@ public class SelectorTest {
     String connectionId = blockingConnect();
     selector.disconnect(connectionId);
     selector.poll(10, asList(createSend(connectionId, "hello1")));
-    assertEquals("Request should not have succeeded", 0, selector.completedSends().size());
+    assertEquals("NetworkRequest should not have succeeded", 0, selector.completedSends().size());
     assertEquals("There should be a disconnect", 1, selector.disconnected().size());
     assertTrue("The disconnect should be from our node", selector.disconnected().contains(connectionId));
     connectionId = blockingConnect();
