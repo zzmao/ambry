@@ -25,11 +25,13 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.http.HttpMethod;
+import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http2.DefaultHttp2Headers;
 import io.netty.handler.codec.http2.DefaultHttp2HeadersFrame;
 import io.netty.handler.codec.http2.Http2Headers;
 import io.netty.handler.codec.http2.Http2StreamChannel;
 import io.netty.handler.codec.http2.Http2StreamChannelBootstrap;
+import io.netty.handler.codec.http2.Http2StreamFrameToHttpObjectCodec;
 import io.netty.handler.codec.http2.HttpConversionUtil;
 import java.util.Properties;
 import org.junit.After;
@@ -89,7 +91,10 @@ public class AmbryHttp2Test {
         @Override
         protected void initChannel(Channel ch) {
           ChannelPipeline p = ch.pipeline();
-          p.addLast("HelloWorldHttp2Handler", new HelloWorldHttp2Handler());
+          p.addLast("child-client-frame-converter", new Http2StreamFrameToHttpObjectCodec(false));
+//          p.addLast("child-client-decompressor", new HttpContentDecompressor());
+          p.addLast("child-client-chunk-aggregator", new HttpObjectAggregator(1024 * 1024));
+          p.addLast("child-client-response-handler", new SimpleHttpResponseHandler());
         }
       };
 
@@ -100,11 +105,14 @@ public class AmbryHttp2Test {
 
       Http2Headers http2Headers =
           new DefaultHttp2Headers().method(HttpMethod.POST.asciiName()).scheme("https").path("/");
-      Integer streamId = 1;
+      Integer streamId = 10;
       http2Headers.setInt(HttpConversionUtil.ExtensionHeaderNames.STREAM_ID.text(), streamId);
       DefaultHttp2HeadersFrame headersFrame = new DefaultHttp2HeadersFrame(http2Headers, true);
-      childChannel.write(headersFrame);
-      childChannel.flush();
+      childChannel.writeAndFlush(headersFrame).addListener(future -> {
+        System.out.println("listener");
+        System.out.println(future.isSuccess());
+        System.out.println(future.getNow());
+      });
       Thread.sleep(5000);
 
       // Wait until the connection is closed.
