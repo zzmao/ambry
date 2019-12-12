@@ -32,7 +32,6 @@ import io.netty.handler.codec.http2.Http2Headers;
 import io.netty.handler.codec.http2.Http2StreamChannel;
 import io.netty.handler.codec.http2.Http2StreamChannelBootstrap;
 import io.netty.handler.codec.http2.Http2StreamFrameToHttpObjectCodec;
-import io.netty.handler.codec.http2.HttpConversionUtil;
 import java.util.Properties;
 import org.junit.After;
 import org.junit.Test;
@@ -98,21 +97,17 @@ public class AmbryHttp2Test {
         }
       };
 
-      Http2StreamChannel childChannel =
-          new Http2StreamChannelBootstrap(channel).handler(initializer).open().syncUninterruptibly().getNow();
+      for (int i = 0; i < 2; i++) {
+        Http2StreamChannel childChannel =
+            new Http2StreamChannelBootstrap(channel).handler(initializer).open().syncUninterruptibly().getNow();
+        Http2Headers http2Headers =
+            new DefaultHttp2Headers().method(HttpMethod.POST.asciiName()).scheme("https").path("/");
+        DefaultHttp2HeadersFrame headersFrame = new DefaultHttp2HeadersFrame(http2Headers, true);
+        childChannel.write(headersFrame);
+        childChannel.flush();
+        System.out.println(childChannel.stream().id());
+      }
 
-      // send request
-
-      Http2Headers http2Headers =
-          new DefaultHttp2Headers().method(HttpMethod.POST.asciiName()).scheme("https").path("/");
-      Integer streamId = 10;
-      http2Headers.setInt(HttpConversionUtil.ExtensionHeaderNames.STREAM_ID.text(), streamId);
-      DefaultHttp2HeadersFrame headersFrame = new DefaultHttp2HeadersFrame(http2Headers, true);
-      childChannel.writeAndFlush(headersFrame).addListener(future -> {
-        System.out.println("listener");
-        System.out.println(future.isSuccess());
-        System.out.println(future.getNow());
-      });
       Thread.sleep(5000);
 
       // Wait until the connection is closed.

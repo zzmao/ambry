@@ -2,12 +2,14 @@ package com.github.ambry.rest;
 
 import com.github.ambry.config.NettyConfig;
 import com.github.ambry.config.PerformanceConfig;
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.handler.codec.http2.Http2StreamFrameToHttpObjectCodec;
 import io.netty.handler.stream.ChunkedWriteHandler;
 
 
+@ChannelHandler.Sharable
 public class Http2StreamHandler extends ChannelInboundHandlerAdapter {
 
   private NettyMetrics nettyMetrics;
