@@ -24,6 +24,8 @@ import io.netty.handler.ssl.ApplicationProtocolNames;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.SupportedCipherSuiteFilter;
+import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
+import io.netty.handler.ssl.util.SelfSignedCertificate;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import javax.net.ssl.SSLContext;
@@ -58,7 +60,8 @@ public class NettySslHttp2Factory implements SSLFactory {
     nettyClientSslContext = getClientSslContext(sslConfig);
     // Netty's OpenSsl based implementation does not use the JDK SSLContext so we have to fall back to the JDK based
     // factory to support this method.
-    jdkSslContext = new JdkSslFactory(sslConfig).getSSLContext();
+
+    jdkSslContext = sslConfig.sslHttp2SelfSign ? null : new JdkSslFactory(sslConfig).getSSLContext();
 
     this.endpointIdentification =
         sslConfig.sslEndpointIdentificationAlgorithm.isEmpty() ? null : sslConfig.sslEndpointIdentificationAlgorithm;
@@ -90,9 +93,16 @@ public class NettySslHttp2Factory implements SSLFactory {
    */
   static SslContext getServerSslContext(SSLConfig config) throws GeneralSecurityException, IOException {
     logger.info("Using {} provider for server SslContext", SslContext.defaultServerProvider());
-    return SslContextBuilder.forServer(NettySslFactory.getKeyManagerFactory(config))
-        .trustManager(getTrustManagerFactory(config))
-        .protocols(NettySslFactory.getEnabledProtocols(config))
+    SslContextBuilder sslContextBuilder;
+    if (config.sslHttp2SelfSign) {
+      SelfSignedCertificate ssc = new SelfSignedCertificate();
+      sslContextBuilder = SslContextBuilder.forServer(ssc.certificate(), ssc.privateKey());
+      logger.info("Using Self Signed Certificate.");
+    } else {
+      sslContextBuilder = SslContextBuilder.forServer(NettySslFactory.getKeyManagerFactory(config))
+          .trustManager(getTrustManagerFactory(config));
+    }
+    return sslContextBuilder.sslProvider(SslContext.defaultClientProvider())
         .clientAuth(NettySslFactory.getClientAuth(config))
         /* NOTE: the cipher filter may not include all ciphers required by the HTTP/2 specification.
          * Please refer to the HTTP/2 specification for cipher requirements. */
@@ -113,10 +123,16 @@ public class NettySslHttp2Factory implements SSLFactory {
    */
   public static SslContext getClientSslContext(SSLConfig config) throws GeneralSecurityException, IOException {
     logger.info("Using {} provider for client SslContext", SslContext.defaultClientProvider());
-    return SslContextBuilder.forClient()
-        .keyManager(getKeyManagerFactory(config))
-        .trustManager(getTrustManagerFactory(config))
-        .protocols(getEnabledProtocols(config))
+    SslContextBuilder sslContextBuilder;
+    if (config.sslHttp2SelfSign) {
+      sslContextBuilder = SslContextBuilder.forClient().trustManager(InsecureTrustManagerFactory.INSTANCE);
+      logger.info("Using Self Signed Certificate.");
+    } else {
+      sslContextBuilder = SslContextBuilder.forClient()
+          .keyManager(getKeyManagerFactory(config))
+          .trustManager(getTrustManagerFactory(config));
+    }
+    return sslContextBuilder.sslProvider(SslContext.defaultClientProvider())
         /* NOTE: the cipher filter may not include all ciphers required by the HTTP/2 specification.
          * Please refer to the HTTP/2 specification for cipher requirements. */
         .ciphers(Http2SecurityUtil.CIPHERS, SupportedCipherSuiteFilter.INSTANCE)

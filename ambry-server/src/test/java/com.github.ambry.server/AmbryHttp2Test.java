@@ -32,6 +32,7 @@ import io.netty.handler.codec.http2.Http2Headers;
 import io.netty.handler.codec.http2.Http2StreamChannel;
 import io.netty.handler.codec.http2.Http2StreamChannelBootstrap;
 import io.netty.handler.codec.http2.Http2StreamFrameToHttpObjectCodec;
+import io.netty.handler.ssl.OpenSsl;
 import java.util.Properties;
 import org.junit.After;
 import org.junit.Test;
@@ -66,7 +67,7 @@ public class AmbryHttp2Test {
     properties.setProperty("ssl.key.password", "work_around_jdk-6879539");
     properties.setProperty("ssl.truststore.path", "/etc/riddler/cacerts");
     properties.setProperty("ssl.truststore.password", "changeit");
-
+    System.out.println(OpenSsl.isAlpnSupported());
     SSLConfig sslConfig = new SSLConfig(new VerifiableProperties(properties));
 
     EventLoopGroup workerGroup = new NioEventLoopGroup();
@@ -77,9 +78,8 @@ public class AmbryHttp2Test {
       b.group(workerGroup);
       b.channel(NioSocketChannel.class);
       b.option(ChannelOption.SO_KEEPALIVE, true);
-      b.remoteAddress("zemao-mn1.linkedin.biz", 1173);
-      b.handler(new NettyStorageClientChannelInitializer(new NettySslHttp2Factory(sslConfig), "zemao-mn1.linkedin.biz",
-          8443));
+      b.remoteAddress("127.0.0.1", 1173);
+      b.handler(new NettyStorageClientChannelInitializer(new NettySslHttp2Factory(sslConfig), "127.0.0.1", 1173));
 
       // Start the client.
       Channel channel = b.connect().syncUninterruptibly().channel();
