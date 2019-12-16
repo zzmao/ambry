@@ -24,16 +24,15 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.http2.Http2FrameCodecBuilder;
 import io.netty.handler.codec.http2.Http2MultiplexHandler;
 import io.netty.handler.ssl.SslHandler;
-import io.netty.handler.stream.ChunkedWriteHandler;
 import io.netty.handler.timeout.IdleStateHandler;
 import java.net.InetSocketAddress;
 
 
 /**
- * A {@link ChannelInitializer} to be used with {@link NettyStorageServerFactory}. Calling {@link #initChannel(SocketChannel)} adds
+ * A {@link ChannelInitializer} to be used with {@link StorageServerNettyFactory}. Calling {@link #initChannel(SocketChannel)} adds
  * the necessary handlers to a channel's pipeline so that it may handle requests.
  */
-public class NettyStorageServerChannelInitializer extends ChannelInitializer<SocketChannel> {
+public class StorageServerNettyChannelInitializer extends ChannelInitializer<SocketChannel> {
   private final NettyConfig nettyConfig;
   private final PerformanceConfig performanceConfig;
   private final NettyMetrics nettyMetrics;
@@ -44,7 +43,7 @@ public class NettyStorageServerChannelInitializer extends ChannelInitializer<Soc
   private final SSLFactory sslFactory;
 
   /**
-   * Construct a {@link NettyStorageServerChannelInitializer}.
+   * Construct a {@link StorageServerNettyChannelInitializer}.
    * @param nettyConfig the config to use when instantiating certain handlers on this pipeline.
    * @param performanceConfig the config to use when evaluating ambry service level objectives that include latency.
    * @param nettyMetrics the {@link NettyMetrics} object to use.
@@ -55,7 +54,7 @@ public class NettyStorageServerChannelInitializer extends ChannelInitializer<Soc
    * @param sslFactory the {@link SSLFactory} to use for generating {@link javax.net.ssl.SSLEngine} instances,
    *                   or {@code null} if SSL is not enabled in this pipeline.
    */
-  public NettyStorageServerChannelInitializer(NettyConfig nettyConfig, PerformanceConfig performanceConfig,
+  public StorageServerNettyChannelInitializer(NettyConfig nettyConfig, PerformanceConfig performanceConfig,
       NettyMetrics nettyMetrics, ConnectionStatsHandler connectionStatsHandler, RestRequestHandler requestHandler,
       PublicAccessLogger publicAccessLogger, RestServerState restServerState, SSLFactory sslFactory,
       MetricRegistry metricRegistry) {
@@ -88,13 +87,7 @@ public class NettyStorageServerChannelInitializer extends ChannelInitializer<Soc
     }
     pipeline.addLast(Http2FrameCodecBuilder.forServer().build())
         .addLast("healthCheckHandler", new HealthCheckHandler(restServerState, nettyMetrics))
-        // for public access logging
-//        .addLast("publicAccessLogHandler", new PublicAccessLogHandler(publicAccessLogger, nettyMetrics))
-        // for detecting connections that have been idle too long - probably because of an error.
         .addLast("idleStateHandler", new IdleStateHandler(0, 0, nettyConfig.nettyServerIdleTimeSeconds))
-        // for safe writing of chunks for responses
-//        .addLast("chunker", new ChunkedWriteHandler())
-        // custom processing class that interfaces with a BlobStorageService.
         .addLast("processor", new Http2MultiplexHandler(
             new Http2StreamHandler(nettyMetrics, nettyConfig, performanceConfig, requestHandler)));
   }

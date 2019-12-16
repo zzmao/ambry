@@ -17,9 +17,7 @@ import com.codahale.metrics.MetricRegistry;
 import com.github.ambry.commons.SSLFactory;
 import com.github.ambry.config.NettyConfig;
 import com.github.ambry.config.PerformanceConfig;
-import com.github.ambry.config.SSLConfig;
 import com.github.ambry.config.VerifiableProperties;
-import com.github.ambry.utils.Utils;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.socket.SocketChannel;
 import java.util.Collections;
@@ -35,8 +33,8 @@ import org.slf4j.LoggerFactory;
  * Sets up all the supporting cast required for the operation of {@link NettyServer} and returns a new instance on
  * {@link #getNioServer()}.
  */
-public class NettyStorageServerFactory implements NioServerFactory {
-  private static final Logger LOGGER = LoggerFactory.getLogger(NettyStorageServerFactory.class);
+public class StorageServerNettyFactory implements NioServerFactory {
+  private static final Logger LOGGER = LoggerFactory.getLogger(StorageServerNettyFactory.class);
 
   private final NettyConfig nettyConfig;
   private final PerformanceConfig performanceConfig;
@@ -57,7 +55,7 @@ public class NettyStorageServerFactory implements NioServerFactory {
    * @throws IllegalArgumentException if any of the arguments are null.
    * @throws ReflectiveOperationException if a netty-specific {@link SSLFactory} cannot be instantiated via reflection.
    */
-  public NettyStorageServerFactory(VerifiableProperties verifiableProperties, MetricRegistry metricRegistry,
+  public StorageServerNettyFactory(VerifiableProperties verifiableProperties, MetricRegistry metricRegistry,
       final RestRequestHandler requestHandler, final PublicAccessLogger publicAccessLogger,
       final RestServerState restServerState, SSLFactory defaultSslFactory) throws ReflectiveOperationException {
     if (verifiableProperties == null || metricRegistry == null || requestHandler == null || publicAccessLogger == null
@@ -71,9 +69,9 @@ public class NettyStorageServerFactory implements NioServerFactory {
 
     Map<Integer, ChannelInitializer<SocketChannel>> initializers = new HashMap<>();
 
-      initializers.put(8443,
-          new NettyStorageServerChannelInitializer(nettyConfig, performanceConfig, nettyMetrics, connectionStatsHandler,
-              requestHandler, publicAccessLogger, restServerState, defaultSslFactory, metricRegistry));
+    initializers.put(nettyConfig.nettyServerHttp2Port,
+        new StorageServerNettyChannelInitializer(nettyConfig, performanceConfig, nettyMetrics, connectionStatsHandler,
+            requestHandler, publicAccessLogger, restServerState, defaultSslFactory, metricRegistry));
     channelInitializers = Collections.unmodifiableMap(initializers);
   }
 

@@ -77,7 +77,7 @@ public class AmbryHttp2Test {
       b.group(workerGroup);
       b.channel(NioSocketChannel.class);
       b.option(ChannelOption.SO_KEEPALIVE, true);
-      b.remoteAddress("zemao-mn1.linkedin.biz", 8443);
+      b.remoteAddress("zemao-mn1.linkedin.biz", 1173);
       b.handler(new NettyStorageClientChannelInitializer(new NettySslHttp2Factory(sslConfig), "zemao-mn1.linkedin.biz",
           8443));
 

@@ -89,7 +89,7 @@ public class NettySslFactory implements SSLFactory {
    * @throws GeneralSecurityException
    * @throws IOException
    */
-  static SslContext getServerSslContext(SSLConfig config) throws GeneralSecurityException, IOException {
+  private static SslContext getServerSslContext(SSLConfig config) throws GeneralSecurityException, IOException {
     logger.info("Using {} provider for server SslContext", SslContext.defaultServerProvider());
     return SslContextBuilder.forServer(getKeyManagerFactory(config))
         .trustManager(getTrustManagerFactory(config))
@@ -105,7 +105,7 @@ public class NettySslFactory implements SSLFactory {
    * @throws GeneralSecurityException
    * @throws IOException
    */
-  static SslContext getClientSslContext(SSLConfig config) throws GeneralSecurityException, IOException {
+  private static SslContext getClientSslContext(SSLConfig config) throws GeneralSecurityException, IOException {
     logger.info("Using {} provider for client SslContext", SslContext.defaultClientProvider());
     return SslContextBuilder.forClient()
         .keyManager(getKeyManagerFactory(config))
@@ -124,7 +124,7 @@ public class NettySslFactory implements SSLFactory {
    * @throws GeneralSecurityException
    * @throws IOException
    */
-  static KeyStore loadKeyStore(String storePath, String storeType, String storePassword)
+  private static KeyStore loadKeyStore(String storePath, String storeType, String storePassword)
       throws GeneralSecurityException, IOException {
     try (FileInputStream in = new FileInputStream(storePath)) {
       KeyStore ks = KeyStore.getInstance(storeType);
@@ -165,7 +165,7 @@ public class NettySslFactory implements SSLFactory {
    * @param config the {@link SSLConfig}.
    * @return the list of supported cipher suites, or {@code null} if the configs did not specify any
    */
-  static Iterable<String> getCipherSuites(SSLConfig config) {
+  private static Iterable<String> getCipherSuites(SSLConfig config) {
     List<String> cipherSuitesList = Utils.splitString(config.sslCipherSuites, ",");
     return cipherSuitesList.size() > 0 ? cipherSuitesList : null;
   }

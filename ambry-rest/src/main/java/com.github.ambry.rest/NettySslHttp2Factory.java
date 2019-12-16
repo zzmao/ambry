@@ -36,7 +36,7 @@ import static com.github.ambry.rest.NettySslFactory.*;
 
 
 /**
- * An implementation of {@link SSLFactory} that uses Netty's SSL libraries. This has the benefit of using OpenSSL
+ * An HTTP/2 specific implementation of {@link SSLFactory} that uses Netty's SSL libraries. This has the benefit of using OpenSSL
  * instead of JDK's SSL implementation when the netty-tcnative library is loaded. OpenSSL shows
  * significant performance enhancements over the JDK implementation.
  */

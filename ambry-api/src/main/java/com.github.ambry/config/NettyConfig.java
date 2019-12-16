@@ -24,6 +24,7 @@ import java.util.Set;
 public class NettyConfig {
   public static final String NETTY_SERVER_BOSS_THREAD_COUNT = "netty.server.boss.thread.count";
   public static final String NETTY_SERVER_IDLE_TIME_SECONDS = "netty.server.idle.time.seconds";
+  public static final String NETTY_SERVER_HTTP2_PORT = "netty.server.http2.port";
   public static final String NETTY_SERVER_PORT = "netty.server.port";
   public static final String NETTY_SERVER_SSL_PORT = "netty.server.ssl.port";
   public static final String NETTY_SERVER_ENABLE_SSL = "netty.server.enable.ssl";
@@ -52,6 +53,13 @@ public class NettyConfig {
   @Config(NETTY_SERVER_IDLE_TIME_SECONDS)
   @Default("60")
   public final int nettyServerIdleTimeSeconds;
+
+  /**
+   * Port on which to run netty http2 server.
+   */
+  @Config(NETTY_SERVER_HTTP2_PORT)
+  @Default("1173")
+  public final int nettyServerHttp2Port;
 
   /**
    * Port on which to run netty server for plaintext connections.
@@ -163,6 +171,7 @@ public class NettyConfig {
   public NettyConfig(VerifiableProperties verifiableProperties) {
     nettyServerBossThreadCount = verifiableProperties.getInt(NETTY_SERVER_BOSS_THREAD_COUNT, 1);
     nettyServerIdleTimeSeconds = verifiableProperties.getInt(NETTY_SERVER_IDLE_TIME_SECONDS, 60);
+    nettyServerHttp2Port = verifiableProperties.getInt(NETTY_SERVER_HTTP2_PORT, 1173);
     nettyServerPort = verifiableProperties.getInt(NETTY_SERVER_PORT, 1174);
     nettyServerSSLPort = verifiableProperties.getInt(NETTY_SERVER_SSL_PORT, 1175);
     nettyServerEnableSSL = verifiableProperties.getBoolean(NETTY_SERVER_ENABLE_SSL, false);

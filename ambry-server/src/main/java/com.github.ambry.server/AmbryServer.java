@@ -225,8 +225,8 @@ public class AmbryServer {
 
       AmbryServerRequests ambryServerRequests2 =
           new AmbryServerRequests(storageManager, requestResponseChannel, clusterMap, nodeId, registry, serverMetrics,
-              findTokenHelper, notificationSystem, replicationManager, storeKeyFactory,
-              serverConfig, storeKeyConverterFactory, statsManager);
+              findTokenHelper, notificationSystem, replicationManager, storeKeyFactory, serverConfig,
+              storeKeyConverterFactory, statsManager);
       RequestHandlerPool requestHandlerPool2 =
           new RequestHandlerPool(serverConfig.serverRequestHandlerNumOfThreads, requestResponseChannel,
               ambryServerRequests2);

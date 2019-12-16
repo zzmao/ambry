@@ -15,7 +15,7 @@
 package com.github.ambry.server;
 
 import com.github.ambry.commons.SSLFactory;
-import com.github.ambry.rest.NettyStorageServerFactory;
+import com.github.ambry.rest.StorageServerNettyFactory;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelInitializer;
@@ -27,7 +27,7 @@ import io.netty.handler.ssl.SslHandler;
 
 
 /**
- * A {@link ChannelInitializer} to be used with {@link NettyStorageServerFactory}. Calling {@link #initChannel(SocketChannel)} adds
+ * A {@link ChannelInitializer} to be used with {@link StorageServerNettyFactory}. Calling {@link #initChannel(SocketChannel)} adds
  * the necessary handlers to a channel's pipeline so that it may handle requests.
  */
 public class NettyStorageClientChannelInitializer extends ChannelInitializer<SocketChannel> {

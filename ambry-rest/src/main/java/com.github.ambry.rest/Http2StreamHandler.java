@@ -9,6 +9,9 @@ import io.netty.handler.codec.http2.Http2StreamFrameToHttpObjectCodec;
 import io.netty.handler.stream.ChunkedWriteHandler;
 
 
+/*
+ * HTTP2 stream handler for each stream.
+ */
 @ChannelHandler.Sharable
 public class Http2StreamHandler extends ChannelInboundHandlerAdapter {
 
@@ -29,7 +32,7 @@ public class Http2StreamHandler extends ChannelInboundHandlerAdapter {
   public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
     ctx.pipeline().addLast(new Http2StreamFrameToHttpObjectCodec(true));
     // for safe writing of chunks for responses
-    ctx.pipeline().addLast("chunker", new ChunkedWriteHandler());
+    ctx.pipeline().addLast(new ChunkedWriteHandler());
     ctx.pipeline().addLast(new NettyMessageProcessor(nettyMetrics, nettyConfig, performanceConfig, requestHandler));
   }
 }
