@@ -22,6 +22,7 @@ import com.github.ambry.clustermap.ClusterSpectator;
 import com.github.ambry.clustermap.ClusterSpectatorFactory;
 import com.github.ambry.clustermap.DataNodeId;
 import com.github.ambry.commons.LoggingNotificationSystem;
+import com.github.ambry.commons.SSLFactory;
 import com.github.ambry.commons.ServerMetrics;
 import com.github.ambry.config.CloudConfig;
 import com.github.ambry.config.ClusterMapConfig;
@@ -29,6 +30,7 @@ import com.github.ambry.config.ConnectionPoolConfig;
 import com.github.ambry.config.DiskManagerConfig;
 import com.github.ambry.config.NetworkConfig;
 import com.github.ambry.config.ReplicationConfig;
+import com.github.ambry.config.RestServerConfig;
 import com.github.ambry.config.SSLConfig;
 import com.github.ambry.config.ServerConfig;
 import com.github.ambry.config.StatsManagerConfig;
@@ -38,6 +40,7 @@ import com.github.ambry.messageformat.BlobStoreHardDelete;
 import com.github.ambry.messageformat.BlobStoreRecovery;
 import com.github.ambry.network.BlockingChannelConnectionPool;
 import com.github.ambry.network.ConnectionPool;
+import com.github.ambry.network.NettyServerRequestResponseChannel;
 import com.github.ambry.network.NetworkServer;
 import com.github.ambry.network.Port;
 import com.github.ambry.network.PortType;
@@ -298,6 +301,12 @@ public class AmbryServer {
       }
       if (networkServer != null) {
         networkServer.shutdown();
+      }
+      if (restRequestHandler != null) {
+        restRequestHandler.shutdown();
+      }
+      if (nioServer != null) {
+        nioServer.shutdown();
       }
       if (requestHandlerPool != null) {
         requestHandlerPool.shutdown();

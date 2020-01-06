@@ -13,6 +13,8 @@
  */
 package com.github.ambry.store;
 
+import com.github.ambry.router.AsyncWritableChannel;
+import com.github.ambry.router.Callback;
 import java.io.IOException;
 import java.nio.channels.WritableByteChannel;
 
@@ -36,7 +38,14 @@ public interface MessageReadSet {
   long writeTo(int index, WritableByteChannel channel, long relativeOffset, long maxSize) throws IOException;
 
   /**
-   * Returns the total number of messages in this set
+   * Write all messages in this set to the give {@link AsyncWritableChannel}
+   * @param channel the channel into which the data needs to be written to
+   * @param callback The callback when data is fully wrote to the channel.
+   * @throws IOException
+   */
+  void writeTo(AsyncWritableChannel channel, Callback callback) throws IOException;
+
+  /**
    * @return The total number of messages in this set
    */
   int count();

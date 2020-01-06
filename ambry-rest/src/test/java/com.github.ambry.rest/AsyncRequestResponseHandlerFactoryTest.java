@@ -66,7 +66,6 @@ public class AsyncRequestResponseHandlerFactoryTest {
   /**
    * Tests instantiation of {@link AsyncRequestResponseHandlerFactory} with bad input.
    */
-  @Test
   public void getFactoryTestWithBadInputTest() throws IOException {
     VerifiableProperties verifiableProperties = new VerifiableProperties(new Properties());
     Router router = new InMemoryRouter(verifiableProperties, new MockClusterMap());

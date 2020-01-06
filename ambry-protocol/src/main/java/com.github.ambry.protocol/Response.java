@@ -13,6 +13,8 @@
  */
 package com.github.ambry.protocol;
 
+import com.github.ambry.router.AsyncWritableChannel;
+import com.github.ambry.router.Callback;
 import com.github.ambry.server.ServerErrorCode;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -50,6 +52,16 @@ public abstract class Response extends RequestOrResponse {
       bufferToSend.flip();
     }
     return bufferToSend.remaining() > 0 ? channel.write(bufferToSend) : 0;
+  }
+
+  @Override
+  public void writeTo(AsyncWritableChannel channel, Callback<Long> callback) throws IOException {
+    if (bufferToSend == null) {
+      bufferToSend = ByteBuffer.allocate((int) sizeInBytes());
+      writeHeader();
+      bufferToSend.flip();
+    }
+    channel.write(bufferToSend, callback);
   }
 
   @Override

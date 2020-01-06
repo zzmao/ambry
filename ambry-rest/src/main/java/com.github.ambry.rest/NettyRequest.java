@@ -445,6 +445,10 @@ class NettyRequest implements RestRequest {
     return HttpPostRequestDecoder.isMultipart(request);
   }
 
+  protected boolean isHttp2RequestFromFrontend() {
+    return request.headers().contains(RestUtils.Headers.HTTP2_FRONTEND_REQUEST);
+  }
+
   /**
    * Writes the data in the provided {@code httpContent} to the given {@code writeChannel}.
    * @param writeChannel the {@link AsyncWritableChannel} to write the data of {@code httpContent} to.
