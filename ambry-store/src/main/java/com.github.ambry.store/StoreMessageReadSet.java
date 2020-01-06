@@ -15,6 +15,8 @@ package com.github.ambry.store;
 
 import com.github.ambry.account.Account;
 import com.github.ambry.account.Container;
+import com.github.ambry.router.AsyncWritableChannel;
+import com.github.ambry.router.Callback;
 import com.github.ambry.utils.Pair;
 import com.github.ambry.utils.Utils;
 import java.io.Closeable;
@@ -157,6 +159,7 @@ class BlobReadOptions implements Comparable<BlobReadOptions>, Closeable {
    */
   void doPrefetch(long relativeOffset, long size) throws IOException {
     long sizeToRead = Math.min(size, getMessageInfo().getSize() - relativeOffset);
+    System.out.println("prefetch size" + sizeToRead);
     prefetchedData = ByteBuffer.allocate((int) sizeToRead);
     getChannel().read(prefetchedData, offset.getOffset() + relativeOffset);
     prefetchedDataRelativeOffset = relativeOffset;
@@ -206,6 +209,18 @@ class StoreMessageReadSet implements MessageReadSet {
     }
     logger.trace("Written {} bytes to the write channel from the file channel : {}", written, options.getFile());
     return written;
+  }
+
+  @Override
+  public void writeTo(AsyncWritableChannel channel, Callback callback) throws IOException {
+    System.out.println("StoreMessageReadSet........");
+    for (BlobReadOptions options : readOptions) {
+      ByteBuffer buf = options.getPrefetchedData();
+      buf.position(0);
+      System.out.println(buf);
+      channel.write(buf, callback);
+      System.out.println("blob options send");
+    }
   }
 
   @Override

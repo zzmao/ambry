@@ -143,6 +143,7 @@ class AsyncRequestResponseHandler implements RestRequestHandler, RestResponseHan
   @Override
   public void handleRequest(RestRequest restRequest, RestResponseChannel restResponseChannel)
       throws RestServiceException {
+    System.out.println("async handle request");
     if (isRunning() && requestWorkersCount > 0) {
       getWorker().submitRequest(restRequest, restResponseChannel);
     } else {
@@ -296,16 +297,19 @@ class AsyncRequestWorker implements Runnable {
    */
   @Override
   public void run() {
-    logger.trace("AsyncRequestWorker started");
+    logger.info("AsyncRequestWorker started");
     AsyncRequestInfo requestInfo = null;
     try {
       while (isRunning()) {
         try {
+          System.out.println("requesting");
           requestInfo = requests.take();
+          System.out.println("requesting got");
           if (requestInfo.restRequest != null) {
             processRequest(requestInfo);
-            logger.trace("Request {} was processed successfully", requestInfo.restRequest.getUri());
+            logger.info("Request {} was processed successfully", requestInfo.restRequest.getUri());
           } else {
+            System.out.println("break");
             break;
           }
         } catch (Exception e) {
@@ -363,13 +367,14 @@ class AsyncRequestWorker implements Runnable {
       RestServiceException exception = null;
       try {
         added = requests.add(requestInfo);
+        System.out.println("request added");
       } catch (Exception e) {
         exception = new RestServiceException("Attempt to add request failed", e,
             RestServiceErrorCode.RequestResponseQueuingFailure);
       }
       if (added) {
         queuedRequestCount.incrementAndGet();
-        logger.trace("Queued request {}", restRequest.getUri());
+        logger.info("Queued request {}", restRequest.getUri());
         metrics.requestQueuingRate.mark();
       } else {
         metrics.requestQueueAddError.inc();
@@ -419,7 +424,7 @@ class AsyncRequestWorker implements Runnable {
       RestResponseChannel restResponseChannel = asyncRequestInfo.restResponseChannel;
       RestMethod restMethod = restRequest.getRestMethod();
       restRequest.prepare();
-      logger.trace("Processing request {} with RestMethod {}", restRequest.getUri(), restMethod);
+      logger.info("Processing request {} with RestMethod {}", restRequest.getUri(), restMethod);
       long restRequestProcessingStartTime = System.currentTimeMillis();
       switch (restMethod) {
         case GET:

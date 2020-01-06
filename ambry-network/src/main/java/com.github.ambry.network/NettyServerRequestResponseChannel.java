@@ -15,6 +15,8 @@ package com.github.ambry.network;
 
 import com.github.ambry.rest.RestResponseChannel;
 import com.github.ambry.rest.RestUtils;
+import com.github.ambry.router.Callback;
+import java.io.DataInputStream;
 import java.io.IOException;
 import java.util.concurrent.ArrayBlockingQueue;
 
@@ -32,6 +34,13 @@ public class NettyServerRequestResponseChannel implements RequestResponseChannel
   /** Send a request to be handled, potentially blocking until there is room in the queue for the request */
   @Override
   public void sendRequest(NetworkRequest request) throws InterruptedException {
+    DataInputStream stream = new DataInputStream(request.getInputStream());
+    try {
+      // TODO: Where is this done in socket channel?
+      stream.readLong();
+    } catch (IOException e) {
+      throw new InterruptedException("stream read error." + e);
+    }
     requestQueue.put(request);
   }
 
@@ -47,7 +56,12 @@ public class NettyServerRequestResponseChannel implements RequestResponseChannel
     RestResponseChannel restResponseChannel = ((NettyServerRequest) originalRequest).getRestResponseChannel();
     restResponseChannel.setHeader(RestUtils.Headers.CONTENT_LENGTH, payloadToSend.sizeInBytes());
     try {
-      payloadToSend.writeTo(restResponseChannel, null); // an extra copy
+      payloadToSend.writeTo(restResponseChannel, new Callback<Long>() {
+        @Override
+        public void onCompletion(Long result, Exception exception) {
+          System.out.println("buffer send complete!");
+        }
+      });
     } catch (IOException e) {
       throw new InterruptedException(e.toString());
     }

@@ -47,13 +47,16 @@ public class StorageRestRequestService implements RestRequestService {
 
   @Override
   public void handleGet(RestRequest restRequest, RestResponseChannel restResponseChannel) {
+    System.out.println("get");
   }
 
   @Override
   public void handlePost(RestRequest restRequest, RestResponseChannel restResponseChannel) {
+    System.out.println("post");
     CopyingAsyncWritableChannel asyncWritableChannel = new CopyingAsyncWritableChannel();
     restRequest.readInto(asyncWritableChannel, (result, exception) -> {
       try {
+        System.out.println("post callback");
         requestResponseChannel.sendRequest(
             new NettyServerRequest(restRequest, restResponseChannel, asyncWritableChannel.getContentAsInputStream()));
       } catch (InterruptedException e) {
@@ -65,6 +68,7 @@ public class StorageRestRequestService implements RestRequestService {
 
   @Override
   public void handlePut(RestRequest restRequest, RestResponseChannel restResponseChannel) {
+    System.out.println("put");
   }
 
   @Override

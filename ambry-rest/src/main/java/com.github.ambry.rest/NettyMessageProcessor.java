@@ -226,7 +226,7 @@ public class NettyMessageProcessor extends SimpleChannelInboundHandler<HttpObjec
   @Override
   public void channelRead0(ChannelHandlerContext ctx, HttpObject obj) throws RestServiceException {
     if (isOpen()) {
-      logger.trace("Reading on channel {}", ctx.channel());
+      logger.info("Reading on channel {}", ctx.channel());
       long currentTime = System.currentTimeMillis();
       if (firstMessageReceived.compareAndSet(false, true)) {
         if (ctx.pipeline().get(SslHandler.class) != null) {
@@ -308,14 +308,16 @@ public class NettyMessageProcessor extends SimpleChannelInboundHandler<HttpObjec
           }
           responseChannel.setRequest(request);
           logger.trace("Channel {} now handling request {}", ctx.channel(), request.getUri());
-          // We send POST that is not multipart for handling immediately since we expect valid content with it that will
-          // be streamed in. In the case of POST that is multipart, all the content has to be received for Netty's
+          // We send POST that is not multipart or not http2 for handling immediately since we expect valid content with it that will
+          // be streamed in.
+          // In the case of POST that is multipart, all the content has to be received for Netty's
           // decoder and NettyMultipartRequest to work. So it is scheduled for handling when LastHttpContent is received.
           // With any other method that we support, we do not expect any valid content. LastHttpContent is a Netty thing.
           // So we wait for LastHttpContent (throw an error if we don't receive it or receive something else) and then
           // schedule the other methods for handling in handleContent().
+          // For HTTP2 from frontend, waif for all contents to be received.
           if ((request.getRestMethod().equals(RestMethod.POST) || request.getRestMethod().equals(RestMethod.PUT))
-              && !HttpPostRequestDecoder.isMultipart(httpRequest)) {
+              && !HttpPostRequestDecoder.isMultipart(httpRequest) && !request.isHttp2RequestFromFrontend()) {
             requestHandler.handleRequest(request, responseChannel);
           }
         } catch (RestServiceException e) {
@@ -358,6 +360,7 @@ public class NettyMessageProcessor extends SimpleChannelInboundHandler<HttpObjec
       long processingStartTime = System.currentTimeMillis();
       nettyMetrics.bytesReadRate.mark(httpContent.content().readableBytes());
       requestContentFullyReceived = httpContent instanceof LastHttpContent;
+      System.out.println("fully received? " + requestContentFullyReceived);
       logger.trace("Received content for request {} on channel {}", request.getUri(), ctx.channel());
       try {
         request.addContent(httpContent);
@@ -372,7 +375,8 @@ public class NettyMessageProcessor extends SimpleChannelInboundHandler<HttpObjec
       }
       if (success && (
           (!request.getRestMethod().equals(RestMethod.POST) && !request.getRestMethod().equals(RestMethod.PUT)) || (
-              request.isMultipart() && requestContentFullyReceived))) {
+              request.isMultipart() && requestContentFullyReceived) || (request.isHttp2RequestFromFrontend()
+              && requestContentFullyReceived))) {
         requestHandler.handleRequest(request, responseChannel);
       }
     } else {
@@ -393,6 +397,7 @@ public class NettyMessageProcessor extends SimpleChannelInboundHandler<HttpObjec
     request = null;
     lastChannelReadTime = null;
     requestContentFullyReceived = false;
+    System.out.println("NettyMessageProcess resetState()");
     responseChannel = new NettyResponseChannel(ctx, nettyMetrics, performanceConfig);
     logger.trace("Refreshed state for channel {}", ctx.channel());
   }

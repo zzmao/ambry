@@ -14,6 +14,8 @@
 package com.github.ambry.protocol;
 
 import com.github.ambry.network.Send;
+import com.github.ambry.router.AsyncWritableChannel;
+import com.github.ambry.router.Callback;
 import java.io.IOException;
 import java.nio.channels.WritableByteChannel;
 import java.util.List;
@@ -46,6 +48,13 @@ public class CompositeSend implements Send {
       }
     }
     return written;
+  }
+
+  @Override
+  public void writeTo(AsyncWritableChannel channel, Callback callback) throws IOException {
+    for (Send send : compositSendList) {
+      send.writeTo(channel, callback);
+    }
   }
 
   @Override

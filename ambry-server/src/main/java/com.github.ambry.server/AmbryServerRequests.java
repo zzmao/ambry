@@ -103,6 +103,7 @@ public class AmbryServerRequests extends AmbryRequests {
   @Override
   public void handleRequests(NetworkRequest request) throws InterruptedException {
     try {
+      logger.info("handleRequests");
       DataInputStream stream = new DataInputStream(request.getInputStream());
       RequestOrResponseType type = RequestOrResponseType.values()[stream.readShort()];
       switch (type) {

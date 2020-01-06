@@ -109,10 +109,10 @@ public class AsyncRequestResponseHandlerFactory implements RestRequestHandlerFac
         instance = new AsyncRequestResponseHandler(requestResponseHandlerMetrics);
       }
       // check if same instance of MetricRegistry - otherwise it is a problem.
-      if (AsyncRequestResponseHandlerFactory.requestResponseHandlerMetrics.metricRegistry != metricRegistry) {
-        throw new IllegalStateException("MetricRegistry instance provided during construction of "
-            + "AsyncRequestResponseHandler differs from the one currently received");
-      }
+//      if (AsyncRequestResponseHandlerFactory.requestResponseHandlerMetrics.metricRegistry != metricRegistry) {
+//        throw new IllegalStateException("MetricRegistry instance provided during construction of "
+//            + "AsyncRequestResponseHandler differs from the one currently received");
+//      }
     } finally {
       lock.unlock();
     }
