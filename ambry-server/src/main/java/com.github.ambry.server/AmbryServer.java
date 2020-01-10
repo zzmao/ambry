@@ -48,6 +48,16 @@ import com.github.ambry.protocol.RequestHandlerPool;
 import com.github.ambry.replication.CloudToStoreReplicationManager;
 import com.github.ambry.replication.FindTokenHelper;
 import com.github.ambry.replication.ReplicationManager;
+import com.github.ambry.rest.NettySslHttp2Factory;
+import com.github.ambry.rest.NioServer;
+import com.github.ambry.rest.NioServerFactory;
+import com.github.ambry.rest.PublicAccessLogger;
+import com.github.ambry.rest.RestRequestHandler;
+import com.github.ambry.rest.RestRequestResponseHandlerFactory;
+import com.github.ambry.rest.RestRequestService;
+import com.github.ambry.rest.RestResponseHandler;
+import com.github.ambry.rest.RestServerState;
+import com.github.ambry.rest.StorageServerNettyFactory;
 import com.github.ambry.store.StorageManager;
 import com.github.ambry.store.StoreKeyConverterFactory;
 import com.github.ambry.store.StoreKeyFactory;
@@ -95,6 +105,9 @@ public class AmbryServer {
   private final NotificationSystem notificationSystem;
   private ServerMetrics metrics = null;
   private Time time;
+  private RestResponseHandler restResponseHandler;
+  private RestRequestHandler restRequestHandler;
+  private NioServer nioServer;
 
   public AmbryServer(VerifiableProperties properties, ClusterAgentsFactory clusterAgentsFactory,
       ClusterSpectatorFactory clusterSpectatorFactory, Time time) {
@@ -201,6 +214,41 @@ public class AmbryServer {
           networkServer.getRequestResponseChannel(), requests);
       networkServer.start();
 
+      // start netty http2 server
+      if (nodeId.hasHttp2Port()) {
+        RestServerConfig restServerConfig = new RestServerConfig(properties);
+        SSLFactory sslFactory = new NettySslHttp2Factory(sslConfig);
+        RestServerState restServerState = new RestServerState(restServerConfig.restServerHealthCheckUri);
+        NettyServerRequestResponseChannel requestResponseChannel = new NettyServerRequestResponseChannel(1);
+        RestRequestService restRequestService = new StorageRestRequestService(requestResponseChannel);
+
+        AmbryServerRequests ambryServerRequestsForHttp2 =
+            new AmbryServerRequests(storageManager, requestResponseChannel, clusterMap, nodeId, registry, serverMetrics,
+                findTokenHelper, notificationSystem, replicationManager, storeKeyFactory, serverConfig,
+                storeKeyConverterFactory, statsManager);
+        RequestHandlerPool requestHandlerPoolForHttp2 =
+            new RequestHandlerPool(serverConfig.serverRequestHandlerNumOfThreads, requestResponseChannel,
+                ambryServerRequestsForHttp2);
+
+        RestRequestResponseHandlerFactory handlerFactory =
+            Utils.getObj(restServerConfig.restServerRequestHandlerFactory,
+                restServerConfig.restServerRequestHandlerScalingUnitCount, registry, restRequestService);
+        restRequestHandler = handlerFactory.getRestRequestHandler();
+        restResponseHandler = handlerFactory.getRestResponseHandler();
+
+        restRequestHandler.start();
+        PublicAccessLogger publicAccessLogger =
+            new PublicAccessLogger(restServerConfig.restServerPublicAccessLogRequestHeaders.split(","),
+                restServerConfig.restServerPublicAccessLogResponseHeaders.split(","));
+
+        NioServerFactory nioServerFactory =
+            new StorageServerNettyFactory(nodeId.getHttp2Port(), properties, registry, restRequestHandler,
+                publicAccessLogger, restServerState, sslFactory);
+        nioServer = nioServerFactory.getNioServer();
+        nioServer.start();
+      }
+
+      // other code
       List<AmbryHealthReport> ambryHealthReports = new ArrayList<>();
       Set<String> validStatsTypes = new HashSet<>();
       for (StatsReportType type : StatsReportType.values()) {

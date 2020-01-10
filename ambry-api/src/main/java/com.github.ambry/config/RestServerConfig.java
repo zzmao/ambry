@@ -40,7 +40,7 @@ public class RestServerConfig {
   public final int restServerRequestHandlerScalingUnitCount;
 
   /**
-   * The RestRequestHandlerFactory that needs to be used by the RestServer
+   * The RestRequestHandlerFactory and RestResponseHandlerFactory that needs to be used by the RestServer
    * for bootstrapping the RestRequestHandler
    */
   @Config("rest.server.request.handler.factory")
@@ -53,14 +53,6 @@ public class RestServerConfig {
   @Config("rest.server.response.handler.scaling.unit.count")
   @Default("5")
   public final int restServerResponseHandlerScalingUnitCount;
-
-  /**
-   * The RestResponseHandlerFactory that needs to be used by the RestServer
-   * for bootstrapping the RestResponseHandler.
-   */
-  @Config("rest.server.response.handler.factory")
-  @Default("com.github.ambry.rest.AsyncRequestResponseHandlerFactory")
-  public final String restServerResponseHandlerFactory;
 
   /**
    * The AccountServiceFactory that needs to be used by FrontendRestRequestService to get account-related information.
@@ -100,16 +92,14 @@ public class RestServerConfig {
 
   public RestServerConfig(VerifiableProperties verifiableProperties) {
     restServerRestRequestServiceFactory = verifiableProperties.getString("rest.server.rest.request.service.factory");
-    restServerNioServerFactory = verifiableProperties.getString("rest.server.nio.server.factory",
-        "com.github.ambry.rest.FrontendNettyFactory");
+    restServerNioServerFactory =
+        verifiableProperties.getString("rest.server.nio.server.factory", "com.github.ambry.rest.FrontendNettyFactory");
     restServerRequestHandlerScalingUnitCount =
         verifiableProperties.getIntInRange("rest.server.request.handler.scaling.unit.count", 5, 0, Integer.MAX_VALUE);
     restServerRequestHandlerFactory = verifiableProperties.getString("rest.server.request.handler.factory",
         "com.github.ambry.rest.AsyncRequestResponseHandlerFactory");
     restServerResponseHandlerScalingUnitCount =
         verifiableProperties.getIntInRange("rest.server.response.handler.scaling.unit.count", 5, 0, Integer.MAX_VALUE);
-    restServerResponseHandlerFactory = verifiableProperties.getString("rest.server.response.handler.factory",
-        "com.github.ambry.rest.AsyncRequestResponseHandlerFactory");
     restServerAccountServiceFactory = verifiableProperties.getString("rest.server.account.service.factory",
         "com.github.ambry.account.InMemoryUnknownAccountServiceFactory");
     restServerRouterFactory = verifiableProperties.getString("rest.server.router.factory",

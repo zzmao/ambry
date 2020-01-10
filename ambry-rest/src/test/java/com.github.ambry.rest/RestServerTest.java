@@ -183,7 +183,6 @@ public class RestServerTest {
     doBadFactoryClassTest("rest.server.nio.server.factory");
     doBadFactoryClassTest("rest.server.rest.request.service.factory");
     doBadFactoryClassTest("rest.server.router.factory");
-    doBadFactoryClassTest("rest.server.response.handler.factory");
     doBadFactoryClassTest("rest.server.request.handler.factory");
     doBadFactoryClassTest("rest.server.account.service.factory");
   }
