@@ -14,14 +14,21 @@
  */
 package com.github.ambry.rest;
 
+import com.github.ambry.network.RequestInfo;
+import com.github.ambry.network.ResponseInfo;
 import com.github.ambry.router.Callback;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.FullHttpResponse;
-import io.netty.handler.codec.http2.HttpConversionUtil;
 import io.netty.util.AttributeKey;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,19 +37,38 @@ import org.slf4j.LoggerFactory;
  * Process {@link io.netty.handler.codec.http.FullHttpResponse} translated from HTTP/2 frames
  */
 @ChannelHandler.Sharable
-public class Http2ResponseHandler extends SimpleChannelInboundHandler<FullHttpResponse> {
+public class Http2ClientResponseHandler extends SimpleChannelInboundHandler<FullHttpResponse> {
   public static AttributeKey<Callback<ByteBuf>> RESPONSE_CALLBACK = AttributeKey.newInstance("responseCallback");
+  public static AttributeKey<RequestInfo> REQUEST_INFO = AttributeKey.newInstance("requestInfo");
   protected final Logger logger = LoggerFactory.getLogger(getClass());
+  private Queue<ResponseInfo> responseInfoList0 = new ConcurrentLinkedQueue<>();
+  private Queue<ResponseInfo> responseInfoList1 = new ConcurrentLinkedQueue<>();
+  private volatile Queue<ResponseInfo> responseInfoListToProduce = responseInfoList0;
+  private Lock lock = new ReentrantLock();
 
   @Override
   protected void channelRead0(ChannelHandlerContext ctx, FullHttpResponse msg) throws Exception {
-    Integer streamId = msg.headers().getInt(HttpConversionUtil.ExtensionHeaderNames.STREAM_ID.text());
-    if (streamId == null) {
-      logger.error("Http2ResponseHandler unexpected message received: " + msg);
-      return;
+    getListToProduce().add(
+        new ResponseInfo(ctx.channel().attr(REQUEST_INFO).get(), null, msg.content().retainedDuplicate()));
+  }
+
+  private Queue<ResponseInfo> getListToProduce() {
+    return responseInfoListToProduce;
+  }
+
+  public Queue<ResponseInfo> acquireListToConsume() {
+    if (responseInfoListToProduce == responseInfoList0) {
+      return responseInfoList1;
+    } else {
+      return responseInfoList0;
     }
-    logger.trace("Stream response received.");
-    Callback<ByteBuf> callback = ctx.channel().attr(RESPONSE_CALLBACK).getAndSet(null);
-    callback.onCompletion(msg.content().retainedDuplicate(), null);
+  }
+
+  public void releaseList() {
+    if (responseInfoListToProduce == responseInfoList0) {
+      responseInfoListToProduce = responseInfoList1;
+    } else {
+      responseInfoListToProduce = responseInfoList0;
+    }
   }
 }

@@ -21,7 +21,7 @@ import com.github.ambry.network.ConnectedChannel;
 import com.github.ambry.network.Send;
 import com.github.ambry.rest.Http2ClientChannelInitializer;
 import com.github.ambry.rest.Http2ClientStreamInitializer;
-import com.github.ambry.rest.Http2ResponseHandler;
+import com.github.ambry.rest.Http2ClientResponseHandler;
 import com.github.ambry.rest.NettySslHttp2Factory;
 import com.github.ambry.rest.RestUtils;
 import com.github.ambry.router.Callback;
@@ -91,7 +91,7 @@ public class Http2BlockingChannel implements ConnectedChannel {
     // Start the client.
     channel = b.connect().syncUninterruptibly().channel();
     logger.info("Connected to remote host");
-    Http2ClientStreamInitializer initializer = new Http2ClientStreamInitializer(new Http2ResponseHandler());
+    Http2ClientStreamInitializer initializer = new Http2ClientStreamInitializer(new Http2ClientResponseHandler());
     http2StreamChannelBootstrap = new Http2StreamChannelBootstrap(channel).handler(initializer);
   }
 
@@ -115,7 +115,7 @@ public class Http2BlockingChannel implements ConnectedChannel {
     Http2Headers http2Headers = new DefaultHttp2Headers().method(HttpMethod.POST.asciiName()).scheme("https").path("/");
     http2Headers.set(RestUtils.Headers.HTTP2_FRONTEND_REQUEST, "true");
     channelPromise = childChannel.newPromise();
-    childChannel.attr(Http2ResponseHandler.RESPONSE_CALLBACK).set(new Callback<ByteBuf>() {
+    childChannel.attr(Http2ClientResponseHandler.RESPONSE_CALLBACK).set(new Callback<ByteBuf>() {
       @Override
       public void onCompletion(ByteBuf result, Exception exception) {
         responseByteBuf = result;

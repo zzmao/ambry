@@ -25,10 +25,8 @@ import io.netty.handler.codec.http2.Http2StreamFrameToHttpObjectCodec;
  * A {@link ChannelInitializer} to be used for http2 stream.
  */
 public class Http2ClientStreamInitializer extends ChannelInitializer<Channel> {
-  private Http2ResponseHandler http2ResponseHandler;
 
-  public Http2ClientStreamInitializer(Http2ResponseHandler http2ResponseHandler) {
-    this.http2ResponseHandler = http2ResponseHandler;
+  public Http2ClientStreamInitializer(Http2ClientResponseHandler http2ResponseHandler) {
   }
 
   @Override
@@ -36,11 +34,6 @@ public class Http2ClientStreamInitializer extends ChannelInitializer<Channel> {
     ChannelPipeline p = ch.pipeline();
     p.addLast(new Http2StreamFrameToHttpObjectCodec(false));
     p.addLast(new HttpObjectAggregator(1024 * 1024));
-    p.addLast(http2ResponseHandler);
-  }
-
-  public Http2ResponseHandler getHttp2ResponseHandler() {
-    return http2ResponseHandler;
   }
 }
 

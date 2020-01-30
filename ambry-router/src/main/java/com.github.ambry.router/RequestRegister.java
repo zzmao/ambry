@@ -26,68 +26,37 @@ import java.util.Set;
  * "Manager" classes. The updates to these data structures are not thread safe and this callback should only be called
  * from the main event loop thread.
  */
-class RequestRegistrationCallback<T> implements RequestRegister<T> {
-  private final Map<Integer, T> correlationIdToOperation;
-  private List<RequestInfo> requestsToSend = null;
-  private Set<Integer> requestsToDrop = null;
-
-  /**
-   * @param correlationIdToOperation used to keep a mapping from correlation ID to the operation that the request
-   *                                 corresponds to.
-   */
-  RequestRegistrationCallback(Map<Integer, T> correlationIdToOperation) {
-    this.correlationIdToOperation = correlationIdToOperation;
-  }
+interface RequestRegister<T> {
 
   /**
    * @return the list where new requests to send are added.
    */
-  public List<RequestInfo> getRequestsToSend() {
-    return requestsToSend;
-  }
+  List<RequestInfo> getRequestsToSend();
 
   /**
    * @return the list where the correlation IDs of requests to drop are added.
    */
-  public Set<Integer> getRequestsToDrop() {
-    return requestsToDrop;
-  }
+  Set<Integer> getRequestsToDrop();
 
   /**
    * @param requestsToSend the list to add {@link RequestInfo} for requests to send to.
    */
-  public void setRequestsToSend(List<RequestInfo> requestsToSend) {
-    this.requestsToSend = requestsToSend;
-  }
+  void setRequestsToSend(List<RequestInfo> requestsToSend);
 
   /**
    * @param requestsToDrop the list to add the correlation IDs of requests to drop to.
    */
-  public void setRequestsToDrop(Set<Integer> requestsToDrop) {
-    this.requestsToDrop = requestsToDrop;
-  }
+  void setRequestsToDrop(Set<Integer> requestsToDrop);
 
   /**
    * @param routerOperation the operation that the request corresponds to.
    * @param requestInfo the request to send out.
    */
-  public void registerRequestToSend(T routerOperation, RequestInfo requestInfo) {
-    // TODO: netty send here>?
-    if (requestsToSend != null) {
-      requestsToSend.add(requestInfo);
-    }
-    correlationIdToOperation.put(requestInfo.getRequest().getCorrelationId(), routerOperation);
-  }
+  void registerRequestToSend(T routerOperation, RequestInfo requestInfo);
 
   /**
    * Register a request to "drop". The current default networking layer drops requests by closing connections.
    * @param correlationId the correlation ID of the request to drop.
    */
-  public void registerRequestToDrop(int correlationId) {
-    if (requestsToDrop != null) {
-      requestsToDrop.add(correlationId);
-    }
-    // do not remove from correlationIdToOperation here because it will be handled by manager classes when they receive
-    // a ResponseInfo.
-  }
+  void registerRequestToDrop(int correlationId);
 }
