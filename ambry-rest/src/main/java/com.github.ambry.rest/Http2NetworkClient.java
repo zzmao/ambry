@@ -66,6 +66,7 @@ public class Http2NetworkClient implements NetworkClient {
         if (future.isSuccess()) {
           Channel streamChannel = future.getNow();
           streamChannel.pipeline().addLast(http2ClientResponseHandler);
+          streamChannel.pipeline().addLast(new AmbrySendToHttp2Adaptor());
           streamChannel.attr(Http2ClientResponseHandler.REQUEST_INFO).set(requestInfo);
           streamChannel.write(requestInfo.getRequest());
         }

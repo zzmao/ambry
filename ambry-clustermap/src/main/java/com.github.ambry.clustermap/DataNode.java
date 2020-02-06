@@ -159,14 +159,15 @@ class DataNode implements DataNodeId {
    */
   @Override
   public Port getPortToConnectTo() {
-    if (sslEnabledDataCenters.contains(datacenter.getName())) {
-      if (ports.containsKey(PortType.SSL)) {
-        return ports.get(PortType.SSL);
-      } else {
-        throw new IllegalStateException("No SSL Port exists for the data node " + hostname + ":" + portNum);
-      }
-    }
-    return ports.get(PortType.PLAINTEXT);
+    return ports.get(PortType.HTTP2);
+//    if (sslEnabledDataCenters.contains(datacenter.getName())) {
+//      if (ports.containsKey(PortType.SSL)) {
+//        return ports.get(PortType.SSL);
+//      } else {
+//        throw new IllegalStateException("No SSL Port exists for the data node " + hostname + ":" + portNum);
+//      }
+//    }
+//    return ports.get(PortType.PLAINTEXT);
   }
 
   @Override
