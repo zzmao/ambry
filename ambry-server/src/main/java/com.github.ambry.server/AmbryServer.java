@@ -179,7 +179,7 @@ public class AmbryServer {
           new ReplicationManager(replicationConfig, clusterMapConfig, storeConfig, storageManager, storeKeyFactory,
               clusterMap, scheduler, nodeId, connectionPool, registry, notificationSystem, storeKeyConverterFactory,
               serverConfig.serverMessageTransformer, clusterParticipant);
-      replicationManager.start();
+      // replicationManager.start();
 
       if (replicationConfig.replicationEnabledWithVcrCluster) {
         logger.info("Creating Helix cluster spectator for cloud to store replication.");

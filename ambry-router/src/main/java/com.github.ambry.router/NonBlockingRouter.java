@@ -19,6 +19,8 @@ import com.github.ambry.clustermap.DataNodeId;
 import com.github.ambry.commons.BlobId;
 import com.github.ambry.commons.ResponseHandler;
 import com.github.ambry.config.RouterConfig;
+import com.github.ambry.config.SSLConfig;
+import com.github.ambry.config.VerifiableProperties;
 import com.github.ambry.messageformat.BlobInfo;
 import com.github.ambry.messageformat.BlobProperties;
 import com.github.ambry.network.NetworkClient;
@@ -29,6 +31,7 @@ import com.github.ambry.notification.NotificationSystem;
 import com.github.ambry.protocol.GetOption;
 import com.github.ambry.protocol.RequestOrResponse;
 import com.github.ambry.protocol.RequestOrResponseType;
+import com.github.ambry.rest.Http2NetworkClient;
 import com.github.ambry.store.StoreKey;
 import com.github.ambry.utils.Time;
 import com.github.ambry.utils.Utils;
@@ -39,6 +42,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
@@ -572,7 +576,9 @@ class NonBlockingRouter implements Router {
      * @throws IOException if the network components could not be created.
      */
     OperationController(String suffix, String defaultPartitionClass, AccountService accountService) throws IOException {
-      networkClient = networkClientFactory.getNetworkClient();
+//      networkClient = networkClientFactory.getNetworkClient();
+      networkClient = new Http2NetworkClient(new SSLConfig(new VerifiableProperties(new Properties())));
+      System.out.println("hehe" + networkClient);
       // Warm up connections to dataNodes in local and remote DCs.
       List<ResponseInfo> responseInfos = new ArrayList<>();
 

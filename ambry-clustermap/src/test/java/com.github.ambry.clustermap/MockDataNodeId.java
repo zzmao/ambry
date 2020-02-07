@@ -122,14 +122,15 @@ public class MockDataNodeId implements DataNodeId {
 
   @Override
   public Port getPortToConnectTo() {
-    if (sslEnabledDataCenters.contains(datacenter)) {
-      if (ports.containsKey(PortType.SSL)) {
-        return ports.get(PortType.SSL);
-      } else {
-        throw new IllegalArgumentException("No SSL Port exists for the data node " + hostname + ":" + portNum);
-      }
-    }
-    return new Port(portNum, PortType.PLAINTEXT);
+    return ports.get(PortType.HTTP2);
+//    if (sslEnabledDataCenters.contains(datacenter)) {
+//      if (ports.containsKey(PortType.SSL)) {
+//        return ports.get(PortType.SSL);
+//      } else {
+//        throw new IllegalArgumentException("No SSL Port exists for the data node " + hostname + ":" + portNum);
+//      }
+//    }
+//    return new Port(portNum, PortType.PLAINTEXT);
   }
 
   @Override

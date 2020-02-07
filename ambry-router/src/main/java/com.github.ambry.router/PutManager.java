@@ -221,6 +221,7 @@ class PutManager {
     PutResponse putResponse =
         RouterUtils.extractResponseAndNotifyResponseHandler(responseHandler, routerMetrics, responseInfo,
             PutResponse::readFrom, PutResponse::getError, false);
+    System.out.println("put response is" + putResponse);
     RequestInfo routerRequestInfo = responseInfo.getRequestInfo();
     int correlationId = routerRequestInfo.getRequest().getCorrelationId();
     // Get the PutOperation that generated the request.

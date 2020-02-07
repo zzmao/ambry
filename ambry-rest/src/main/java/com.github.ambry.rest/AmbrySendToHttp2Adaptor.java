@@ -62,7 +62,7 @@ public class AmbrySendToHttp2Adaptor extends ChannelOutboundHandlerAdapter {
     if (!(msg instanceof Send)) {
       ctx.write(msg, promise);
     }
-    System.out.println("converting send to http2");
+    System.out.println("Sending http2 msg" + msg);
     Send send = (Send) msg;
     Http2Headers http2Headers = new DefaultHttp2Headers().method(HttpMethod.POST.asciiName()).scheme("https").path("/");
     DefaultHttp2HeadersFrame headersFrame = new DefaultHttp2HeadersFrame(http2Headers, false);
@@ -72,7 +72,6 @@ public class AmbrySendToHttp2Adaptor extends ChannelOutboundHandlerAdapter {
       send.writeTo(byteBufChannel);
       int index = 0;
       for (ByteBuf byteBuf : byteBufChannel.getBufs()) {
-        System.out.println("data frame: " );
         DefaultHttp2DataFrame dataFrame =
             new DefaultHttp2DataFrame(byteBuf, index == byteBufChannel.getBufs().size() - 1);
         ctx.write(dataFrame);

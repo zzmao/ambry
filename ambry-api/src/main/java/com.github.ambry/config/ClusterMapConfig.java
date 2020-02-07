@@ -82,6 +82,13 @@ public class ClusterMapConfig {
   public final String clusterMapSslEnabledDatacenters;
 
   /**
+   * List of Datacenters to which local node needs SSL encryption to communicate
+   */
+  @Config("clustermap.http2.enabled.datacenters")
+  @Default("")
+  public final String clusterMapHttp2EnabledDatacenters;
+
+  /**
    * The clustermap agent factory to use for instantiating the Cluster Map and the Cluster Participant.
    */
   @Config("clustermap.clusteragents.factory")
@@ -235,6 +242,7 @@ public class ClusterMapConfig {
         verifiableProperties.getIntInRange("clustermap.fixedtimeout.replica.retry.backoff.ms", 10 * 60 * 1000, 1,
             30 * 60 * 1000);
     clusterMapSslEnabledDatacenters = verifiableProperties.getString("clustermap.ssl.enabled.datacenters", "");
+    clusterMapHttp2EnabledDatacenters = verifiableProperties.getString("clustermap.http2.enabled.datacenters", "");
     clusterMapClusterAgentsFactory = verifiableProperties.getString("clustermap.clusteragents.factory",
         "com.github.ambry.clustermap.StaticClusterAgentsFactory");
     clusterMapDcsZkConnectStrings = verifiableProperties.getString("clustermap.dcs.zk.connect.strings", "");
