@@ -48,6 +48,7 @@ public class Http2ClientResponseHandler extends SimpleChannelInboundHandler<Full
 
   @Override
   protected void channelRead0(ChannelHandlerContext ctx, FullHttpResponse msg) throws Exception {
+    System.out.println("response come");
     getListToProduce().add(
         new ResponseInfo(ctx.channel().attr(REQUEST_INFO).get(), null, msg.content().retainedDuplicate()));
   }

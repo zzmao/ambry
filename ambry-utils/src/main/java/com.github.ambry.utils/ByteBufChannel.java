@@ -59,8 +59,10 @@ public class ByteBufChannel implements WritableByteChannel {
    */
   @Override
   public int write(ByteBuffer src) throws ClosedChannelException {
+    int size = src.remaining();
     bufs.add(Unpooled.wrappedBuffer(src));
-    return src.remaining();
+    src.position(src.limit());
+    return size;
   }
 
   @Override

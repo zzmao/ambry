@@ -60,6 +60,7 @@ public class NettyServerRequestResponseChannel implements RequestResponseChannel
     } catch (IOException e) {
       throw new InterruptedException(e.toString());
     }
+    System.out.println("NettyServerRequestResponse: " + payloadToSend.sizeInBytes());
   }
 
   /**

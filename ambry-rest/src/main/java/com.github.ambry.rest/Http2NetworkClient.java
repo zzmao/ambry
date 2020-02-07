@@ -62,8 +62,10 @@ public class Http2NetworkClient implements NetworkClient {
       int pollTimeoutMs) {
 
     for (RequestInfo requestInfo : requestsToSend) {
+      System.out.println("request info:" + requestInfo);
       this.pools.get(requestInfo).acquire().addListener((GenericFutureListener<Future<Channel>>) future -> {
         if (future.isSuccess()) {
+          System.out.println("???");
           Channel streamChannel = future.getNow();
           streamChannel.pipeline().addLast(http2ClientResponseHandler);
           streamChannel.pipeline().addLast(new AmbrySendToHttp2Adaptor());
@@ -78,6 +80,7 @@ public class Http2NetworkClient implements NetworkClient {
     http2ClientResponseHandler.releaseList();
     return list;
   }
+
 
   @Override
   public int warmUpConnections(List<DataNodeId> dataNodeIds, int connectionWarmUpPercentagePerDataNode,

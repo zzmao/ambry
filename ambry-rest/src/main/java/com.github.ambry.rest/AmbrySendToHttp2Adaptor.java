@@ -72,6 +72,7 @@ public class AmbrySendToHttp2Adaptor extends ChannelOutboundHandlerAdapter {
       send.writeTo(byteBufChannel);
       int index = 0;
       for (ByteBuf byteBuf : byteBufChannel.getBufs()) {
+        System.out.println("data frame: " );
         DefaultHttp2DataFrame dataFrame =
             new DefaultHttp2DataFrame(byteBuf, index == byteBufChannel.getBufs().size() - 1);
         ctx.write(dataFrame);
