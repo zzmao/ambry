@@ -51,6 +51,8 @@ public class Http2ClientResponseHandler extends SimpleChannelInboundHandler<Full
     System.out.println("response come");
     getListToProduce().add(
         new ResponseInfo(ctx.channel().attr(REQUEST_INFO).get(), null, msg.content().retainedDuplicate()));
+    // TODO: is this a good place to release this channel?
+    ctx.channel().attr(Http2MultiplexedChannelPool.HTTP2_MULTIPLEXED_CHANNEL_POOL).get().release(ctx.channel());
   }
 
   private Queue<ResponseInfo> getListToProduce() {
