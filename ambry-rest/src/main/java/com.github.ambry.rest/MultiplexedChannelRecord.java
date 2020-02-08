@@ -37,21 +37,20 @@ import org.slf4j.LoggerFactory;
 
 
 /**
- * Contains a {@link Future} for the actual socket channel and tracks available
- * streams based on the MAX_CONCURRENT_STREAMS setting for the connection.
+ * Contains a {@link Future} for the actual socket channel and tracks available stream channels.
  */
 public class MultiplexedChannelRecord {
   private static final Logger log = LoggerFactory.getLogger(MultiplexedChannelRecord.class);
 
-  private final Channel connection;
-  private final long maxConcurrencyPerConnection;
+  private final Channel parentChannel;
+  private final long maxStreamsPerParentChannel;
   private final Long allowedIdleConnectionTimeMillis;
 
-  private final AtomicLong availableChildChannels;
+  private final AtomicLong numOfAvailableStreams;
   private volatile long lastReserveAttemptTimeMillis;
 
   // Only read or write in the connection.eventLoop()
-  private final Map<ChannelId, Http2StreamChannel> childChannels = new HashMap<>();
+  private final Map<ChannelId, Http2StreamChannel> streamChannels = new HashMap<>();
   private ScheduledFuture<?> closeIfIdleTask;
 
   // Only write in the connection.eventLoop()
@@ -59,10 +58,10 @@ public class MultiplexedChannelRecord {
 
   private volatile int lastStreamId;
 
-  MultiplexedChannelRecord(Channel connection, long maxConcurrencyPerConnection, Duration allowedIdleConnectionTime) {
-    this.connection = connection;
-    this.maxConcurrencyPerConnection = maxConcurrencyPerConnection;
-    this.availableChildChannels = new AtomicLong(maxConcurrencyPerConnection);
+  MultiplexedChannelRecord(Channel parentChannel, long maxStreamsPerParentChannel, Duration allowedIdleConnectionTime) {
+    this.parentChannel = parentChannel;
+    this.maxStreamsPerParentChannel = maxStreamsPerParentChannel;
+    this.numOfAvailableStreams = new AtomicLong(maxStreamsPerParentChannel);
     this.allowedIdleConnectionTimeMillis =
         allowedIdleConnectionTime == null ? null : allowedIdleConnectionTime.toMillis();
   }
@@ -77,15 +76,15 @@ public class MultiplexedChannelRecord {
   }
 
   void acquireClaimedStream(Promise<Channel> promise) {
-    NettyUtils.doInEventLoop(connection.eventLoop(), () -> {
+    NettyUtils.doInEventLoop(parentChannel.eventLoop(), () -> {
       if (state != RecordState.OPEN) {
         String message;
         // GOAWAY
         if (state == RecordState.CLOSED_TO_NEW) {
           message = String.format("Connection %s received GOAWAY with Last Stream ID %d. Unable to open new "
-              + "streams on this connection.", connection, lastStreamId);
+              + "streams on this connection.", parentChannel, lastStreamId);
         } else {
-          message = String.format("Connection %s was closed while acquiring new stream.", connection);
+          message = String.format("Connection %s was closed while acquiring new stream.", parentChannel);
         }
         log.warn(message);
         promise.setFailure(new IOException(message));
@@ -93,9 +92,9 @@ public class MultiplexedChannelRecord {
       }
 
       Future<Http2StreamChannel> streamFuture =
-          new Http2StreamChannelBootstrap(connection).handler(new Http2ClientStreamInitializer(null)).open();
+          new Http2StreamChannelBootstrap(parentChannel).handler(new Http2ClientStreamInitializer(null)).open();
       streamFuture.addListener((GenericFutureListener<Future<Http2StreamChannel>>) future -> {
-        NettyUtils.warnIfNotInEventLoop(connection.eventLoop());
+        NettyUtils.warnIfNotInEventLoop(parentChannel.eventLoop());
 
         if (!future.isSuccess()) {
           promise.setFailure(future.cause());
@@ -103,7 +102,7 @@ public class MultiplexedChannelRecord {
         }
 
         Http2StreamChannel channel = future.getNow();
-        childChannels.put(channel.id(), channel);
+        streamChannels.put(channel.id(), channel);
         promise.setSuccess(channel);
 
         if (closeIfIdleTask == null && allowedIdleConnectionTimeMillis != null) {
@@ -114,14 +113,14 @@ public class MultiplexedChannelRecord {
   }
 
   private void enableCloseIfIdleTask() {
-    NettyUtils.warnIfNotInEventLoop(connection.eventLoop());
+    NettyUtils.warnIfNotInEventLoop(parentChannel.eventLoop());
 
     // Don't poll more frequently than 1 second. Being overly-conservative is okay. Blowing up our CPU is not.
     long taskFrequencyMillis = Math.max(allowedIdleConnectionTimeMillis, 1_000);
 
-    closeIfIdleTask = connection.eventLoop()
+    closeIfIdleTask = parentChannel.eventLoop()
         .scheduleAtFixedRate(this::closeIfIdle, taskFrequencyMillis, taskFrequencyMillis, TimeUnit.MILLISECONDS);
-    connection.closeFuture().addListener(f -> closeIfIdleTask.cancel(false));
+    parentChannel.closeFuture().addListener(f -> closeIfIdleTask.cancel(false));
   }
 
   private void releaseClaimOnFailure(Promise<Channel> promise) {
@@ -138,20 +137,23 @@ public class MultiplexedChannelRecord {
   }
 
   private void releaseClaim() {
-    if (availableChildChannels.incrementAndGet() > maxConcurrencyPerConnection) {
+    if (numOfAvailableStreams.incrementAndGet() > maxStreamsPerParentChannel) {
       assert false;
       log.warn("Child channel count was caught attempting to be increased over max concurrency. "
           + "Please report this issue to the AWS SDK for Java team.");
-      availableChildChannels.decrementAndGet();
+      numOfAvailableStreams.decrementAndGet();
     }
   }
 
   /**
    * Handle a {@link Http2GoAwayFrame} on this connection, preventing new streams from being created on it, and closing any
-   * streams newer than the last-stream-id on the go-away frame.
+   * streams newer than the last-stream-id on the go-away frame. The GOAWAY frame (type=0x7) is used to initiate shutdown
+   * of a connection or to signal serious error conditions. GOAWAY allows an endpoint to gracefully stop accepting new
+   * streams while still finishing processing of previously established streams.
+   * This enables administrative actions, like server maintenance.
    */
-  void handleGoAway(int lastStreamId, IOException exception) {
-    NettyUtils.doInEventLoop(connection.eventLoop(), () -> {
+  void handleGoAway(int lastStreamId, GoAwayException exception) {
+    NettyUtils.doInEventLoop(parentChannel.eventLoop(), () -> {
       this.lastStreamId = lastStreamId;
 
       if (state == RecordState.CLOSED) {
@@ -163,7 +165,7 @@ public class MultiplexedChannelRecord {
       }
 
       // Create a copy of the children to close, because fireExceptionCaught may remove from the childChannels.
-      List<Http2StreamChannel> childrenToClose = new ArrayList<>(childChannels.values());
+      List<Http2StreamChannel> childrenToClose = new ArrayList<>(streamChannels.values());
       childrenToClose.stream()
           .filter(cc -> cc.stream().id() > lastStreamId)
           .forEach(cc -> cc.pipeline().fireExceptionCaught(exception));
@@ -185,14 +187,14 @@ public class MultiplexedChannelRecord {
   }
 
   private void closeAndExecuteOnChildChannels(Consumer<Channel> childChannelConsumer) {
-    NettyUtils.doInEventLoop(connection.eventLoop(), () -> {
+    NettyUtils.doInEventLoop(parentChannel.eventLoop(), () -> {
       if (state == RecordState.CLOSED) {
         return;
       }
       state = RecordState.CLOSED;
 
       // Create a copy of the children, because they may be modified by the consumer.
-      List<Http2StreamChannel> childrenToClose = new ArrayList<>(childChannels.values());
+      List<Http2StreamChannel> childrenToClose = new ArrayList<>(streamChannels.values());
       for (Channel childChannel : childrenToClose) {
         childChannelConsumer.accept(childChannel);
       }
@@ -201,17 +203,17 @@ public class MultiplexedChannelRecord {
 
   void closeAndReleaseChild(Channel childChannel) {
     childChannel.close();
-    NettyUtils.doInEventLoop(connection.eventLoop(), () -> {
-      childChannels.remove(childChannel.id());
+    NettyUtils.doInEventLoop(parentChannel.eventLoop(), () -> {
+      streamChannels.remove(childChannel.id());
       releaseClaim();
     });
   }
 
   private void closeIfIdle() {
-    NettyUtils.warnIfNotInEventLoop(connection.eventLoop());
+    NettyUtils.warnIfNotInEventLoop(parentChannel.eventLoop());
 
     // Don't close if we have child channels.
-    if (!childChannels.isEmpty()) {
+    if (!streamChannels.isEmpty()) {
       return;
     }
 
@@ -223,7 +225,7 @@ public class MultiplexedChannelRecord {
 
     // Cut off new streams from being acquired from this connection by setting the number of available channels to 0.
     // This write may fail if a reservation has happened since we checked the lastReserveAttemptTime.
-    if (!availableChildChannels.compareAndSet(maxConcurrencyPerConnection, 0)) {
+    if (!numOfAvailableStreams.compareAndSet(maxStreamsPerParentChannel, 0)) {
       return;
     }
 
@@ -232,18 +234,18 @@ public class MultiplexedChannelRecord {
       return;
     }
 
-    log.debug("Connection " + connection + " has been idle for " + (System.currentTimeMillis()
+    log.debug("Connection " + parentChannel + " has been idle for " + (System.currentTimeMillis()
         - nonVolatileLastReserveAttemptTimeMillis) + "ms and will be shut down.");
 
     // Mark ourselves as closed
     state = RecordState.CLOSED;
 
     // Start the shutdown process by closing the connection (which should be noticed by the connection pool)
-    connection.close();
+    parentChannel.close();
   }
 
-  public Channel getConnection() {
-    return connection;
+  public Channel getParentChannel() {
+    return parentChannel;
   }
 
   private boolean claimStream() {
@@ -254,12 +256,12 @@ public class MultiplexedChannelRecord {
         return false;
       }
 
-      long currentlyAvailable = availableChildChannels.get();
+      long currentlyAvailable = numOfAvailableStreams.get();
 
       if (currentlyAvailable <= 0) {
         return false;
       }
-      if (availableChildChannels.compareAndSet(currentlyAvailable, currentlyAvailable - 1)) {
+      if (numOfAvailableStreams.compareAndSet(currentlyAvailable, currentlyAvailable - 1)) {
         return true;
       }
     }
@@ -268,7 +270,7 @@ public class MultiplexedChannelRecord {
   }
 
   boolean canBeClosedAndReleased() {
-    return state != RecordState.OPEN && availableChildChannels.get() == maxConcurrencyPerConnection;
+    return state != RecordState.OPEN && numOfAvailableStreams.get() == maxStreamsPerParentChannel;
   }
 
   private enum RecordState {

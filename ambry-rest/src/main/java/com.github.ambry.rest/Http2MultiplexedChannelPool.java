@@ -45,21 +45,20 @@ public class Http2MultiplexedChannelPool implements ChannelPool {
   /**
    * Reference to the {@link MultiplexedChannelRecord} on a channel.
    */
-  private static final AttributeKey<MultiplexedChannelRecord> MULTIPLEXED_CHANNEL = AttributeKey.newInstance(
-      "software.amazon.awssdk.http.nio.netty.internal.http2.Http2MultiplexedChannelPool.MULTIPLEXED_CHANNEL");
+  private static final AttributeKey<MultiplexedChannelRecord> MULTIPLEXED_CHANNEL =
+      AttributeKey.newInstance("MULTIPLEXED_CHANNEL");
 
   /**
-   * Reference to {@link Http2MultiplexedChannelPool} which stores information about leased streams for a multiplexed
-   * connection.
+   * Reference to {@link Http2MultiplexedChannelPool} where stream channel is acquired.
    */
   public static final AttributeKey<Http2MultiplexedChannelPool> HTTP2_MULTIPLEXED_CHANNEL_POOL =
-      AttributeKey.newInstance("aws.http.nio.netty.async.http2MultiplexedChannelPool");
+      AttributeKey.newInstance("HTTP2_MULTIPLEXED_CHANNEL_POOL");
 
   /**
-   * Whether a parent channel has been released yet. This guards against double-releasing to the delegate connection pool.
+   * Whether a parent channel has been released yet. This guards against double-releasing to the connection pool.
    */
-  private static final AttributeKey<Boolean> RELEASED = AttributeKey.newInstance(
-      "software.amazon.awssdk.http.nio.netty.internal.http2.Http2MultiplexedChannelPool.RELEASED");
+  private static final AttributeKey<Boolean> PARENT_CHANNEL_RELEASED =
+      AttributeKey.newInstance("PARENT_CHANNEL_RELEASED");
 
   private final ChannelPool parentConnectionPool;
   private final EventLoopGroup eventLoopGroup;
@@ -190,7 +189,7 @@ public class Http2MultiplexedChannelPool implements ChannelPool {
    */
   private boolean acquireStreamOnInitializedConnection(MultiplexedChannelRecord channelRecord,
       Promise<Channel> promise) {
-    Promise<Channel> acquirePromise = channelRecord.getConnection().eventLoop().newPromise();
+    Promise<Channel> acquirePromise = channelRecord.getParentChannel().eventLoop().newPromise();
 
     if (!channelRecord.acquireStream(acquirePromise)) {
       return false;
@@ -284,11 +283,27 @@ public class Http2MultiplexedChannelPool implements ChannelPool {
     }
 
     parentChannel.close();
-    if (parentChannel.attr(RELEASED).getAndSet(Boolean.TRUE) == null) {
+    if (parentChannel.attr(PARENT_CHANNEL_RELEASED).getAndSet(Boolean.TRUE) == null) {
       return parentConnectionPool.release(parentChannel, resultPromise);
     }
 
     return resultPromise.setSuccess(null);
+  }
+
+  public void handleGoAway(Channel parentChannel, int lastStreamId, GoAwayException exception) {
+    log.debug("Received GOAWAY on " + parentChannel + " with lastStreamId of " + lastStreamId);
+    try {
+      MultiplexedChannelRecord multiplexedChannel = parentChannel.attr(MULTIPLEXED_CHANNEL).get();
+
+      if (multiplexedChannel != null) {
+        multiplexedChannel.handleGoAway(lastStreamId, exception);
+      } else {
+        // If we don't have a multiplexed channel, the parent channel hasn't been fully initialized. Close it now.
+        closeAndReleaseParent(parentChannel);
+      }
+    } catch (Exception e) {
+      log.error("Failed to handle GOAWAY frame on channel " + parentChannel, e);
+    }
   }
 
   @Override
@@ -323,7 +338,7 @@ public class Http2MultiplexedChannelPool implements ChannelPool {
       // Create a copy of the connections to remove while we close them, in case closing updates the original list.
       List<MultiplexedChannelRecord> channelsToRemove = new ArrayList<>(parentConnections);
       for (MultiplexedChannelRecord channel : channelsToRemove) {
-        promiseCombiner.add(closeAndReleaseParent(channel.getConnection()));
+        promiseCombiner.add(closeAndReleaseParent(channel.getParentChannel()));
       }
       promiseCombiner.finish(releaseAllChannelsPromise);
 
