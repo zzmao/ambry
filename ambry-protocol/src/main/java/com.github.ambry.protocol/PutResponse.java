@@ -30,7 +30,6 @@ public class PutResponse extends Response {
   }
 
   public static PutResponse readFrom(DataInputStream stream) throws IOException {
-    stream.readLong();
     RequestOrResponseType type = RequestOrResponseType.values()[stream.readShort()];
     if (type != RequestOrResponseType.PutResponse) {
       throw new IllegalArgumentException("The type of request response is not compatible: " + type);

@@ -84,6 +84,7 @@ public class GetResponse extends Response {
   }
 
   public static GetResponse readFrom(DataInputStream stream, ClusterMap map) throws IOException {
+//    stream.readLong();
     short typeval = stream.readShort();
     RequestOrResponseType type = RequestOrResponseType.values()[typeval];
     if (type != RequestOrResponseType.GetResponse) {

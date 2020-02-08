@@ -31,6 +31,7 @@ import com.github.ambry.messageformat.MessageFormatRecord;
 import com.github.ambry.messageformat.MessageMetadata;
 import com.github.ambry.messageformat.MetadataContentSerDe;
 import com.github.ambry.network.Port;
+import com.github.ambry.network.PortType;
 import com.github.ambry.network.RequestInfo;
 import com.github.ambry.network.ResponseInfo;
 import com.github.ambry.protocol.GetOption;
@@ -692,7 +693,7 @@ class GetBlobOperation extends GetOperation {
         ReplicaId replicaId = replicaIterator.next();
         replicaIterator.remove();
         String hostname = replicaId.getDataNodeId().getHostname();
-        Port port = replicaId.getDataNodeId().getPortToConnectTo();
+        Port port = new Port(replicaId.getDataNodeId().getHttp2Port(), PortType.HTTP2);
         GetRequest getRequest = createGetRequest(chunkBlobId, getOperationFlag(), getGetOption());
         RequestInfo request = new RequestInfo(hostname, port, getRequest, replicaId);
         int correlationId = getRequest.getCorrelationId();

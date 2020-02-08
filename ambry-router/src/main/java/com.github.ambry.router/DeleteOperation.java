@@ -19,6 +19,7 @@ import com.github.ambry.commons.BlobId;
 import com.github.ambry.commons.ResponseHandler;
 import com.github.ambry.config.RouterConfig;
 import com.github.ambry.network.Port;
+import com.github.ambry.network.PortType;
 import com.github.ambry.network.RequestInfo;
 import com.github.ambry.network.ResponseInfo;
 import com.github.ambry.protocol.DeleteRequest;
@@ -123,7 +124,7 @@ class DeleteOperation {
     while (replicaIterator.hasNext()) {
       ReplicaId replica = replicaIterator.next();
       String hostname = replica.getDataNodeId().getHostname();
-      Port port = replica.getDataNodeId().getPortToConnectTo();
+      Port port = new Port(replica.getDataNodeId().getHttp2Port(), PortType.HTTP2);
       DeleteRequest deleteRequest = createDeleteRequest();
       deleteRequestInfos.put(deleteRequest.getCorrelationId(), new DeleteRequestInfo(time.milliseconds(), replica));
       RequestInfo requestInfo = new RequestInfo(hostname, port, deleteRequest, replica);

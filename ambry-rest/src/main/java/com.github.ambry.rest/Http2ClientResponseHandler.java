@@ -48,9 +48,11 @@ public class Http2ClientResponseHandler extends SimpleChannelInboundHandler<Full
 
   @Override
   protected void channelRead0(ChannelHandlerContext ctx, FullHttpResponse msg) throws Exception {
-    System.out.println("response come: " + msg.content());
-    getListToProduce().add(
-        new ResponseInfo(ctx.channel().attr(REQUEST_INFO).get(), null, msg.content().retainedDuplicate()));
+    ByteBuf dup = msg.content().retainedDuplicate();
+    dup.readLong();
+    ResponseInfo responseInfo = new ResponseInfo(ctx.channel().attr(REQUEST_INFO).get(), null, dup);
+    getListToProduce().add(responseInfo);
+    System.out.println("response come: " + responseInfo);
     // TODO: is this a good place to release this channel?
     ctx.channel().attr(Http2MultiplexedChannelPool.HTTP2_MULTIPLEXED_CHANNEL_POOL).get().release(ctx.channel());
   }

@@ -74,11 +74,15 @@ public class Http2NetworkClient implements NetworkClient {
     }
     // TODO: close channel for requestsToDrop
     Queue<ResponseInfo> queue = http2ClientResponseHandler.acquireListToConsume();
-    List<ResponseInfo> list = new ArrayList<>(queue);
+    List<ResponseInfo> list = new ArrayList<>();
+    ResponseInfo responseInfo = queue.poll();
+    while (responseInfo != null) {
+      list.add(responseInfo);
+      responseInfo = queue.poll();
+    }
     http2ClientResponseHandler.releaseList();
     return list;
   }
-
 
   @Override
   public int warmUpConnections(List<DataNodeId> dataNodeIds, int connectionWarmUpPercentagePerDataNode,
