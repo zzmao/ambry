@@ -19,12 +19,20 @@ import com.github.ambry.config.Http2ClientConfig;
 import com.github.ambry.network.NetworkClient;
 import com.github.ambry.network.RequestInfo;
 import com.github.ambry.network.ResponseInfo;
+import com.github.ambry.network.Send;
+import io.netty.channel.Channel;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.pool.ChannelPool;
 import io.netty.channel.pool.ChannelPoolMap;
 import java.net.InetSocketAddress;
 import java.util.List;
+import io.netty.util.concurrent.Future;
+import io.netty.util.concurrent.GenericFutureListener;
+import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Queue;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,17 +46,44 @@ public class Http2NetworkClient implements NetworkClient {
   private static final Logger logger = LoggerFactory.getLogger(Http2NetworkClient.class);
   private final EventLoopGroup eventLoopGroup;
   private final ChannelPoolMap<InetSocketAddress, ChannelPool> pools;
+  private Http2ClientResponseHandler http2ClientResponseHandler;
 
   public Http2NetworkClient(Http2ClientMetrics http2ClientMetrics, Http2ClientConfig http2ClientConfig,
       SSLFactory sslFactory) {
     this.eventLoopGroup = new NioEventLoopGroup(http2ClientConfig.http2NettyEventLoopGroupThreads);
     this.pools = new Http2ChannelPoolMap(sslFactory, eventLoopGroup, http2ClientConfig);
+    this.http2ClientResponseHandler = new Http2ClientResponseHandler();
   }
 
   @Override
   public List<ResponseInfo> sendAndPoll(List<RequestInfo> requestsToSend, Set<Integer> requestsToDrop,
       int pollTimeoutMs) {
-    return null;
+
+    for (RequestInfo requestInfo : requestsToSend) {
+      this.pools.get(InetSocketAddress.createUnresolved(requestInfo.getHost(), requestInfo.getPort().getPort()))
+          .acquire()
+          .addListener((GenericFutureListener<Future<Channel>>) future -> {
+            if (future.isSuccess()) {
+              Channel streamChannel = future.getNow();
+              streamChannel.pipeline().addLast(http2ClientResponseHandler);
+              streamChannel.pipeline().addLast(new AmbrySendToHttp2Adaptor());
+              streamChannel.attr(Http2ClientResponseHandler.REQUEST_INFO).set(requestInfo);
+              streamChannel.write(requestInfo.getRequest());
+            } else {
+              // retry
+            }
+          });
+    }
+    // TODO: close channel for requestsToDrop
+    Queue<ResponseInfo> queue = http2ClientResponseHandler.getQueueToConsume();
+    List<ResponseInfo> list = new ArrayList<>();
+    ResponseInfo responseInfo = queue.poll();
+    while (responseInfo != null) {
+      list.add(responseInfo);
+      responseInfo = queue.poll();
+    }
+    http2ClientResponseHandler.swapQueue();
+    return list;
   }
 
   @Override

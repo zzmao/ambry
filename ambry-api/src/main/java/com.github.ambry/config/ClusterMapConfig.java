@@ -280,7 +280,8 @@ public class ClusterMapConfig {
     clusterMapFixedTimeoutReplicaRetryBackoffMs =
         verifiableProperties.getIntInRange("clustermap.fixedtimeout.replica.retry.backoff.ms", 10 * 60 * 1000, 1,
             30 * 60 * 1000);
-    clusterMapHttp2NetworkClientEnabled = verifiableProperties.getBoolean("clustermap.http2.network.client.enabled", false);
+    clusterMapHttp2NetworkClientEnabled =
+        verifiableProperties.getBoolean("clustermap.http2.network.client.enabled", false);
     clusterMapSslEnabledDatacenters = verifiableProperties.getString("clustermap.ssl.enabled.datacenters", "");
     clusterMapClusterAgentsFactory = verifiableProperties.getString("clustermap.clusteragents.factory",
         "com.github.ambry.clustermap.StaticClusterAgentsFactory");
