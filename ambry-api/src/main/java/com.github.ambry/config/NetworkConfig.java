@@ -32,7 +32,6 @@ public class NetworkConfig {
   public static final String SELECTOR_EXECUTOR_POOL_SIZE = "selector.executor.pool.size";
   public static final String SELECTOR_MAX_KEY_TO_PROCESS = "selector.max.key.to.process";
   public static final String SELECTOR_USE_DIRECT_BUFFERS = "selector.use.direct.buffers";
-  public static final String USE_HTTP2_NETWORK_CLIENT = "use.http2.network.client";
 
   /**
    * The number of io threads that the server uses for carrying out network requests

@@ -17,9 +17,9 @@ import com.github.ambry.clustermap.DataNodeId;
 import com.github.ambry.commons.SSLFactory;
 import com.github.ambry.config.Http2ClientConfig;
 import com.github.ambry.network.NetworkClient;
+import com.github.ambry.network.NetworkClientErrorCode;
 import com.github.ambry.network.RequestInfo;
 import com.github.ambry.network.ResponseInfo;
-import com.github.ambry.network.Send;
 import io.netty.channel.Channel;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -29,9 +29,7 @@ import java.net.InetSocketAddress;
 import java.util.List;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
-import java.net.InetSocketAddress;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Queue;
 import java.util.Set;
 import org.slf4j.Logger;
@@ -40,7 +38,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  * A HTTP/2 implementation of {@link NetworkClient}.
- * TODO: More implementation details will be added in next PR.
  */
 public class Http2NetworkClient implements NetworkClient {
   private static final Logger logger = LoggerFactory.getLogger(Http2NetworkClient.class);
@@ -58,7 +55,8 @@ public class Http2NetworkClient implements NetworkClient {
   @Override
   public List<ResponseInfo> sendAndPoll(List<RequestInfo> requestsToSend, Set<Integer> requestsToDrop,
       int pollTimeoutMs) {
-
+    List<ResponseInfo> readyResponseInfo = new ArrayList<>();
+    // Send request
     for (RequestInfo requestInfo : requestsToSend) {
       this.pools.get(InetSocketAddress.createUnresolved(requestInfo.getHost(), requestInfo.getPort().getPort()))
           .acquire()
@@ -70,20 +68,21 @@ public class Http2NetworkClient implements NetworkClient {
               streamChannel.attr(Http2ClientResponseHandler.REQUEST_INFO).set(requestInfo);
               streamChannel.write(requestInfo.getRequest());
             } else {
-              // retry
+              readyResponseInfo.add(new ResponseInfo(requestInfo, NetworkClientErrorCode.NetworkError, null));
             }
           });
     }
-    // TODO: close channel for requestsToDrop
+    // TODO: close stream channel for requestsToDrop. Need a hashmap from corelationId to streamChannel
+
+    // Add the good responses to readyResponseInfo
     Queue<ResponseInfo> queue = http2ClientResponseHandler.getQueueToConsume();
-    List<ResponseInfo> list = new ArrayList<>();
     ResponseInfo responseInfo = queue.poll();
     while (responseInfo != null) {
-      list.add(responseInfo);
+      readyResponseInfo.add(responseInfo);
       responseInfo = queue.poll();
     }
     http2ClientResponseHandler.swapQueue();
-    return list;
+    return readyResponseInfo;
   }
 
   @Override

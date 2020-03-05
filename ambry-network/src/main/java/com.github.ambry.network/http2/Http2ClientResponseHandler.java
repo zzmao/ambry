@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
  */
 @ChannelHandler.Sharable
 public class Http2ClientResponseHandler extends SimpleChannelInboundHandler<FullHttpResponse> {
-  public static AttributeKey<RequestInfo> REQUEST_INFO = AttributeKey.newInstance("requestInfo");
+  public static AttributeKey<RequestInfo> REQUEST_INFO = AttributeKey.newInstance("RequestInfo");
   protected final Logger logger = LoggerFactory.getLogger(getClass());
   private Queue<ResponseInfo> responseInfoQueue0 = new ConcurrentLinkedQueue<>();
   private Queue<ResponseInfo> responseInfoQueue1 = new ConcurrentLinkedQueue<>();
@@ -44,17 +44,29 @@ public class Http2ClientResponseHandler extends SimpleChannelInboundHandler<Full
     ByteBuf dup = msg.content().retainedDuplicate();
     dup.readLong();
     ResponseInfo responseInfo = new ResponseInfo(ctx.channel().attr(REQUEST_INFO).get(), null, dup);
-    getQueueToProduce().add(responseInfo);
+    getQueueToProduce().offer(responseInfo);
     System.out.println("response come: " + responseInfo);
     // TODO: is this a good place to release this channel?
     // Release stream channel
-    ctx.channel().parent().attr(Http2MultiplexedChannelPool.HTTP2_MULTIPLEXED_CHANNEL_POOL).get().release(ctx.channel());
+    ctx.channel()
+        .parent()
+        .attr(Http2MultiplexedChannelPool.HTTP2_MULTIPLEXED_CHANNEL_POOL)
+        .get()
+        .release(ctx.channel());
   }
 
+  /**
+   * Get the queue to add {@link ResponseInfo}.
+   */
   private synchronized Queue<ResponseInfo> getQueueToProduce() {
     return responseInfoQueueToProduce;
   }
 
+  /**
+   * Get the queue that are not being used by {@link Http2ClientResponseHandler#channelRead0}.
+   * {@link Http2NetworkClient} consumes {@link ResponseInfo} from this queue.
+   * from this queue.
+   */
   public Queue<ResponseInfo> getQueueToConsume() {
     if (responseInfoQueueToProduce == responseInfoQueue0) {
       return responseInfoQueue1;
@@ -63,6 +75,9 @@ public class Http2ClientResponseHandler extends SimpleChannelInboundHandler<Full
     }
   }
 
+  /**
+   * Swap responseInfoQueue0 and responseInfoQueue1 after {@link Http2NetworkClient} consumes all {@link ResponseInfo} from one of them.
+   */
   public synchronized void swapQueue() {
     if (responseInfoQueueToProduce == responseInfoQueue0) {
       responseInfoQueueToProduce = responseInfoQueue1;

@@ -49,12 +49,14 @@ public class Http2MultiplexedChannelPool implements ChannelPool {
 
   /**
    * Reference to the {@link MultiplexedChannelRecord} on a channel.
+   * Attribute of parent channel.
    */
   static final AttributeKey<MultiplexedChannelRecord> MULTIPLEXED_CHANNEL =
       AttributeKey.newInstance("MULTIPLEXED_CHANNEL");
 
   /**
    * Reference to {@link Http2MultiplexedChannelPool} where stream channel is acquired.
+   * Attribute of parent channel.
    */
   static final AttributeKey<Http2MultiplexedChannelPool> HTTP2_MULTIPLEXED_CHANNEL_POOL =
       AttributeKey.newInstance("HTTP2_MULTIPLEXED_CHANNEL_POOL");
