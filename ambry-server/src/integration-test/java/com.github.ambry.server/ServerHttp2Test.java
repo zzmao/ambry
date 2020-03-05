@@ -27,6 +27,7 @@ import com.github.ambry.network.http2.Http2ClientMetrics;
 import com.github.ambry.commons.NettySslHttp2Factory;
 import com.github.ambry.utils.SystemTime;
 import com.github.ambry.utils.TestUtils;
+import io.netty.buffer.Unpooled;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
@@ -136,12 +137,13 @@ public class ServerHttp2Test {
         BlobId.BlobDataType.DATACHUNK);
     // put blob 1
     PutRequest putRequest =
-        new PutRequest(1, "client1", blobId1, properties, ByteBuffer.wrap(usermetadata), ByteBuffer.wrap(data),
+        new PutRequest(1, "client1", blobId1, properties, ByteBuffer.wrap(usermetadata), Unpooled.wrappedBuffer(data),
             properties.getBlobSize(), BlobType.DataBlob, testEncryption ? ByteBuffer.wrap(encryptionKey) : null);
     RequestInfo request =
         new RequestInfo(dataNodeId.getHostname(), new Port(dataNodeId.getHttp2Port(), PortType.HTTP2), putRequest,
             http2Cluster.getClusterMap().getReplicaIds(dataNodeId).get(0));
-    SSLFactory sslFactory = new NettySslHttp2Factory(new SSLConfig(verifiableProperties));
+
+    SSLFactory sslFactory = new NettySslHttp2Factory(clientSSLConfig);
     Http2NetworkClient networkClient = new Http2NetworkClient(new Http2ClientMetrics(new MetricRegistry()),
         new Http2ClientConfig(verifiableProperties), sslFactory);
     networkClient.sendAndPoll(Collections.singletonList(request), new HashSet<>(), 300);
