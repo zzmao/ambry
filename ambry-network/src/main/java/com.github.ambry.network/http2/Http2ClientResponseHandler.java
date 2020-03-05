@@ -42,10 +42,11 @@ public class Http2ClientResponseHandler extends SimpleChannelInboundHandler<Full
   @Override
   protected void channelRead0(ChannelHandlerContext ctx, FullHttpResponse msg) throws Exception {
     ByteBuf dup = msg.content().retainedDuplicate();
+    // Consume length
     dup.readLong();
     ResponseInfo responseInfo = new ResponseInfo(ctx.channel().attr(REQUEST_INFO).get(), null, dup);
     getQueueToProduce().offer(responseInfo);
-    System.out.println("response come: " + responseInfo);
+    logger.info("Response received");
     // TODO: is this a good place to release this channel?
     // Release stream channel
     ctx.channel()

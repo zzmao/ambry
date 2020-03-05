@@ -114,6 +114,7 @@ public class AmbryRequests implements RequestAPI {
     try {
       DataInputStream stream = new DataInputStream(request.getInputStream());
       RequestOrResponseType type = RequestOrResponseType.values()[stream.readShort()];
+      System.out.println("server handle request" + request);
       switch (type) {
         case PutRequest:
           handlePutRequest(request);

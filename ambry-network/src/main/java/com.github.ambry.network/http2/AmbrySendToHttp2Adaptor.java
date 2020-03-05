@@ -13,9 +13,8 @@
  */
 package com.github.ambry.network.http2;
 
-import com.github.ambry.commons.RetainingAsyncWritableChannel;
 import com.github.ambry.network.Send;
-import com.github.ambry.router.Callback;
+import com.github.ambry.utils.ByteBufChannel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelOutboundHandlerAdapter;
 import io.netty.channel.ChannelPromise;
@@ -24,12 +23,13 @@ import io.netty.handler.codec.http2.DefaultHttp2DataFrame;
 import io.netty.handler.codec.http2.DefaultHttp2Headers;
 import io.netty.handler.codec.http2.DefaultHttp2HeadersFrame;
 import io.netty.handler.codec.http2.Http2Headers;
+import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
 /**
- * Translates Ambry Send objects to the corresponding HTTP/2 frame objects.
+ * Translates Ambry {@link Send} to the HTTP/2 frame objects.
  */
 public class AmbrySendToHttp2Adaptor extends ChannelOutboundHandlerAdapter {
   private static final Logger logger = LoggerFactory.getLogger(AmbrySendToHttp2Adaptor.class);
@@ -46,26 +46,20 @@ public class AmbrySendToHttp2Adaptor extends ChannelOutboundHandlerAdapter {
     if (!(msg instanceof Send)) {
       ctx.write(msg, promise);
     }
-
     logger.info("Sending HTTP/2 message: " + msg);
     Send send = (Send) msg;
     Http2Headers http2Headers = new DefaultHttp2Headers().method(HttpMethod.POST.asciiName()).scheme("https").path("/");
     DefaultHttp2HeadersFrame headersFrame = new DefaultHttp2HeadersFrame(http2Headers, false);
     ctx.write(headersFrame);
-    RetainingAsyncWritableChannel asyncWritableChannel = new RetainingAsyncWritableChannel();
-    send.writeTo(asyncWritableChannel, new Callback<Long>() {
-      @Override
-      public void onCompletion(Long result, Exception exception) {
-        if (exception == null) {
-          DefaultHttp2DataFrame dataFrame =
-              new DefaultHttp2DataFrame(asyncWritableChannel.consumeContentAsByteBuf(), true);
-          ctx.write(dataFrame);
-          ctx.flush();
-          promise.setSuccess();
-        } else {
-          promise.setFailure(exception);
-        }
-      }
-    });
+    ByteBufChannel byteBufChannel = new ByteBufChannel();
+    try {
+      send.writeTo(byteBufChannel);
+    } catch (IOException e) {
+      promise.setFailure(e);
+    }
+    DefaultHttp2DataFrame dataFrame = new DefaultHttp2DataFrame(byteBufChannel.getBuf(), true);
+    ctx.write(dataFrame);
+    ctx.flush();
+    promise.setSuccess();
   }
 }

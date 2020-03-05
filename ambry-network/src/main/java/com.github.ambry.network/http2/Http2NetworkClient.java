@@ -58,6 +58,7 @@ public class Http2NetworkClient implements NetworkClient {
     List<ResponseInfo> readyResponseInfo = new ArrayList<>();
     // Send request
     for (RequestInfo requestInfo : requestsToSend) {
+      System.out.println("send out request");
       this.pools.get(InetSocketAddress.createUnresolved(requestInfo.getHost(), requestInfo.getPort().getPort()))
           .acquire()
           .addListener((GenericFutureListener<Future<Channel>>) future -> {

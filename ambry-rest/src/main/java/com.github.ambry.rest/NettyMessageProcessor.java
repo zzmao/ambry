@@ -225,6 +225,7 @@ public class NettyMessageProcessor extends SimpleChannelInboundHandler<HttpObjec
    */
   @Override
   public void channelRead0(ChannelHandlerContext ctx, HttpObject obj) throws RestServiceException {
+    System.out.println("channel read0 storage server");
     if (isOpen()) {
       logger.trace("Reading on channel {}", ctx.channel());
       long currentTime = System.currentTimeMillis();

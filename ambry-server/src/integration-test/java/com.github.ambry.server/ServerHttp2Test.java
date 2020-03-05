@@ -112,53 +112,6 @@ public class ServerHttp2Test {
   }
 
   @Test
-  public void clientTest() throws Exception {
-    VerifiableProperties verifiableProperties = new VerifiableProperties(new Properties());
-    MockClusterMap clusterMap = http2Cluster.getClusterMap();
-    DataNodeId dataNodeId = http2Cluster.getGeneralDataNode();
-
-    byte[] usermetadata = new byte[1000];
-    byte[] data = new byte[31870];
-    byte[] encryptionKey = new byte[100];
-    short accountId = Utils.getRandomShort(TestUtils.RANDOM);
-    short containerId = Utils.getRandomShort(TestUtils.RANDOM);
-
-    BlobProperties properties = new BlobProperties(31870, "serviceid1", accountId, containerId, testEncryption);
-    TestUtils.RANDOM.nextBytes(usermetadata);
-    TestUtils.RANDOM.nextBytes(data);
-    if (testEncryption) {
-      TestUtils.RANDOM.nextBytes(encryptionKey);
-    }
-    List<? extends PartitionId> partitionIds =
-        clusterMap.getWritablePartitionIds(MockClusterMap.DEFAULT_PARTITION_CLASS);
-    short blobIdVersion = CommonTestUtils.getCurrentBlobIdVersion();
-    BlobId blobId1 = new BlobId(blobIdVersion, BlobId.BlobIdType.NATIVE, clusterMap.getLocalDatacenterId(),
-        properties.getAccountId(), properties.getContainerId(), partitionIds.get(0), false,
-        BlobId.BlobDataType.DATACHUNK);
-    // put blob 1
-    PutRequest putRequest =
-        new PutRequest(1, "client1", blobId1, properties, ByteBuffer.wrap(usermetadata), Unpooled.wrappedBuffer(data),
-            properties.getBlobSize(), BlobType.DataBlob, testEncryption ? ByteBuffer.wrap(encryptionKey) : null);
-    RequestInfo request =
-        new RequestInfo(dataNodeId.getHostname(), new Port(dataNodeId.getHttp2Port(), PortType.HTTP2), putRequest,
-            http2Cluster.getClusterMap().getReplicaIds(dataNodeId).get(0));
-
-    SSLFactory sslFactory = new NettySslHttp2Factory(clientSSLConfig);
-    Http2NetworkClient networkClient = new Http2NetworkClient(new Http2ClientMetrics(new MetricRegistry()),
-        new Http2ClientConfig(verifiableProperties), sslFactory);
-    networkClient.sendAndPoll(Collections.singletonList(request), new HashSet<>(), 300);
-    List<ResponseInfo> responseInfos = networkClient.sendAndPoll(Collections.EMPTY_LIST, new HashSet<>(), 300);
-    long startTime = SystemTime.getInstance().milliseconds();
-    while (responseInfos.size() == 0) {
-      responseInfos = networkClient.sendAndPoll(Collections.EMPTY_LIST, new HashSet<>(), 300);
-      if (SystemTime.getInstance().milliseconds() - startTime >= 3000) {
-        fail("Network Client no reponse and timeout.");
-      }
-    }
-    System.out.println(responseInfos);
-  }
-
-  @Test
   public void endToEndTest() throws Exception {
     DataNodeId dataNodeId = http2Cluster.getGeneralDataNode();
     ServerTestUtil.endToEndTest(new Port(dataNodeId.getHttp2Port(), PortType.HTTP2), "DC1", http2Cluster,

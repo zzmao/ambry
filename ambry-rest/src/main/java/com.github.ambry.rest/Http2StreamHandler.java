@@ -43,6 +43,7 @@ public class Http2StreamHandler extends ChannelInboundHandlerAdapter {
 
   @Override
   public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
+    System.out.println("handler added");
     ctx.pipeline().addLast(new Http2StreamFrameToHttpObjectCodec(true));
     // NettyMessageProcessor depends on ChunkedWriteHandler.
     // TODO: add deployment health check handler.
